@@ -3,46 +3,39 @@
 The front end doesn't edit `backend/`. These are the changes it would like, with what it does until then.
 Nothing here is blocking; no screen uses mock data.
 
-## Done (backend)
-
-- 1 `needs_bom` is now applied in SQL before the limit (EXISTS on saved BOMs).
-- 2 `GET /api/materials` returns `cost_tag` and `rate_uom`.
-- 3 `GET /api/cost-heads` lists heads with `default_wastage_pct`.
-- 4 `GET /api/orders/{id}/images/{index}?thumb=true|false` proxies the attachment; when the stored URL has
-  expired and Airtable is configured it re-reads the record for fresh URLs and retries. Prefer this over
-  `images[i].url` in `<img src>`. Without a token, expired links 404 — show the placeholder.
-
 ## TODO
 
-### 1. `GET /api/orders`: apply `needs_bom` before `limit`
+### 1. `needs_bom` and the dashboard count should leave out orders done in Airtable
 
-`list_orders` applies `.limit(limit)` in SQL and filters `needs_bom` in Python afterwards. Orders are sorted oldest
-dispatch first, so once the oldest `limit` orders all have BOMs, the queue comes back short or empty even though
-newer orders still need one.
+Found on the real October data: 468 of the 474 orders `needs_bom=true` returns have `airtable_bom_done` set, 307 of
+them already shipped. They were costed in the old sheet, so they don't need a BOM here, but `needs_bom` only looks at
+BOMs saved in this app. `/dashboard/summary`'s `orders_awaiting_bom` counts them the same way.
 
-- **Asked:** filter in SQL before the limit.
-- **For now:** the queue passes `limit=2000`, which only pushes the problem further out.
+- **Asked:** exclude `airtable_bom_done` from `needs_bom=true` and from `orders_awaiting_bom`.
+- **For now:** `lib/orders.ts` filters them out in the browser, which means asking for `limit=2000` so the API's limit
+  can't cut orders off before the filter. The Awaiting BOM card counts that same list and ignores the summary's number.
 
-### 2. `GET /api/materials`: return `cost_tag`
+### 2. Decide which statuses need no BOM
 
-An extra line's cost head decides its wastage and where it rolls up, but the search result doesn't say what a
-material's cost head is. With no `cost_tag` the backend files the extra under Misc at 0 % wastage, so a metal
-extra would be under-costed.
+Of the 6 orders left in the queue, one is `Cancelled` and one is `Move To China`. If those should never be costed,
+`needs_bom` should exclude them too. This one needs an answer from the BOM team.
 
-- **Asked:** add `cost_tag` to `MaterialSearchOut`, derived the way `app/seed/common.py::cost_tag_for_category` does.
-- **For now:** extras default to Misc and the user can change the cost head on the row.
+### 3. Seeded templates: defaults of 1.0, and every number input required
 
-### 3. `GET /api/cost-heads`: list the cost heads
+`app/seed/templates.py` sets `required` on every number parameter, so the flag doesn't say which inputs really matter.
+Many parameters also default to `1.0` (7 of 8 number inputs on the one published template). A BOM saved without
+touching them gets a plausible but wrong total, with no error.
 
-The cost-head picker on an extra line needs the options (name, default wastage %).
+- **Asked:** template owners should clear placeholder defaults and set `required` properly. Worth doing in the seed or
+  as part of publishing.
+- **For now:** untouched defaults show in orange italics, and a blank required input blocks Save.
 
-- **Asked:** a read-only list of `CostHead`.
-- **For now:** the picker offers the heads already used by the BOM's lines, plus Misc.
+## Done (backend)
 
-### 4. Order images: Airtable attachment URLs expire
-
-`Order.images` stores the attachment URLs as they were at sync time, and Airtable's signed URLs stop working after
-a few hours. Not yet confirmed against real data.
-
-- **Asked:** refresh URLs on sync, or serve attachments through the API.
-- **For now:** a broken image falls back to a placeholder and the file name stays visible.
+- `needs_bom` is applied in SQL before the limit (EXISTS on saved BOMs).
+- `GET /api/materials` returns `cost_tag` and `rate_uom`; extras now start under the material's own cost head.
+- `GET /api/cost-heads` lists heads with `default_wastage_pct`; the picker on extras uses it.
+- `GET /api/orders/{id}/images/{index}?thumb=true|false` proxies attachments and refreshes expired Airtable links when
+  a token is configured. It needs the bearer token, so it can't be an `<img src>`: `lib/useOrderImage.ts` fetches
+  through the API client instead, and only for thumbnails that have been on screen. Without a token expired links
+  404 and the placeholder shows, which is what happens with the CSV-seeded data (every sampled URL returned 410).

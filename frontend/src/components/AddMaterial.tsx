@@ -40,7 +40,7 @@ export function AddMaterial({ onAdd }: { onAdd: (material: MaterialSearchResult)
           <Group justify="space-between" wrap="nowrap" w="100%" gap="xs">
             <Text size="xs">{option.label}</Text>
             <Text size="xs" c={material?.rate == null ? 'red' : 'dimmed'} className="nowrap">
-              {material?.rate == null ? 'no rate' : `${fmtNum(material.rate)} / ${material.uom ?? '?'}`}
+              {material?.rate == null ? 'no rate' : `${fmtNum(material.rate)} / ${material.rate_uom ?? material.uom ?? '?'}`}
             </Text>
           </Group>
         )

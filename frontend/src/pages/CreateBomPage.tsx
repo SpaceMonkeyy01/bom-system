@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { api, errorMessage } from '../api/client'
-import type { Bom, MaterialSearchResult, Order, SignType, Template } from '../api/types'
+import type { Bom, CostHead, MaterialSearchResult, Order, SignType, Template } from '../api/types'
 import { useAuth } from '../auth/AuthProvider'
 import { AddMaterial } from '../components/AddMaterial'
 import { BomLinesTable } from '../components/BomLinesTable'
@@ -95,12 +95,16 @@ function CreateBom({ orderId }: { orderId: number }) {
     [current, extras, overrides, template.data],
   )
 
-  // Offered on added lines until the API lists cost heads (API_REQUESTS.md #3).
-  const costHeads = useMemo(() => {
-    const names = new Set<string>([DEFAULT_EXTRA_HEAD, ...extras.flatMap((e) => (e.cost_tag ? [e.cost_tag] : []))])
-    for (const line of bom?.lines ?? []) if (line.cost_head) names.add(line.cost_head)
-    return [...names].sort()
-  }, [bom, extras])
+  const headList = useQuery({
+    queryKey: ['cost-heads'],
+    queryFn: ({ signal }) => api<CostHead[]>('/cost-heads', { signal }),
+    staleTime: 5 * 60_000,
+  })
+  // A material's tag can be an alias rather than a head's name, and the picker must be able to show it.
+  const costHeads = useMemo(
+    () => [...new Set([...(headList.data ?? []).map((h) => h.name), DEFAULT_EXTRA_HEAD, ...extras.flatMap((e) => (e.cost_tag ? [e.cost_tag] : []))])],
+    [headList.data, extras],
+  )
 
   const save = useMutation({
     mutationFn: () =>
@@ -134,7 +138,7 @@ function CreateBom({ orderId }: { orderId: number }) {
 
   function addExtra(material: MaterialSearchResult) {
     const key = String(nextExtraKey.current++)
-    setExtras((prev) => [...prev, { key, material_id: material.id, name: material.name, qty: 1, cost_tag: DEFAULT_EXTRA_HEAD, uom: material.uom }])
+    setExtras((prev) => [...prev, { key, material_id: material.id, name: material.name, qty: 1, cost_tag: material.cost_tag ?? DEFAULT_EXTRA_HEAD, uom: material.uom }])
   }
 
   function updateExtra(key: string, change: Partial<DraftExtra>) {
@@ -248,6 +252,7 @@ function CreateBom({ orderId }: { orderId: number }) {
           <ParameterForm
             parameters={template.data.parameters}
             values={values}
+            entered={params}
             errors={bom?.input_errors ?? {}}
             onChange={(name, value) => setParams((prev) => ({ ...prev, [name]: value }))}
           />

@@ -87,6 +87,15 @@ export interface MaterialSearchResult {
   active: boolean
   rate: number | null
   rate_source: string | null
+  rate_uom: string | null
+  cost_tag: string | null
+}
+
+export interface CostHead {
+  id: number
+  name: string
+  default_wastage_pct: number
+  aliases: string[]
 }
 
 export interface OrderImage {
