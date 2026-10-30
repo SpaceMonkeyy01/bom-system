@@ -1,4 +1,4 @@
-import { Alert, Button, Center, Paper, PasswordInput, Stack, TextInput, Title } from '@mantine/core'
+import { Alert, Button, Center, Paper, PasswordInput, Stack, Text, TextInput, Title } from '@mantine/core'
 import { type FormEvent, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { errorMessage, safeNext } from '../api/client'
@@ -57,6 +57,9 @@ export function LoginPage() {
             <Button type="submit" loading={busy}>
               Sign in
             </Button>
+            <Text size="xs" c="dimmed" ta="center">
+              MVP v1.0 by Saad
+            </Text>
           </Stack>
         </form>
       </Paper>
