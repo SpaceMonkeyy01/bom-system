@@ -102,7 +102,7 @@ class BOMLine(Base):
     override_note: Mapped[str | None] = mapped_column(String(255))
     swapped_from: Mapped[str | None] = mapped_column(String(255))
     rate: Mapped[float] = mapped_column(Numeric(14, 4), default=0)
-    rate_source: Mapped[str | None] = mapped_column(String(20))  # bom | iflow:BS | iflow:NS | formula | manual
+    rate_source: Mapped[str | None] = mapped_column(String(120))  # bom | iflow:BS | supplier:<name> | formula | manual
     rate_date: Mapped[date | None] = mapped_column(Date)
     rate_stale: Mapped[bool] = mapped_column(Boolean, default=False)
     wastage_pct: Mapped[float] = mapped_column(Numeric(6, 2), default=0)

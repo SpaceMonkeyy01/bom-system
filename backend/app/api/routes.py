@@ -177,6 +177,12 @@ def create_bom(body: S.BOMRequestIn, user: User = Depends(require("bom:write")),
     if errs:
         raise HTTPException(422, {"message": "Fix the inputs first", "input_errors": errs})
     save_bom(db, bom, user_id=user.id)
+    from app.config import settings
+    from app.services.airtable import get_client, write_back
+
+    client = get_client() if settings.airtable_auto_write_back else None
+    if client:
+        write_back(db, client, bom)  # failures are logged on the BOM's write_backs; the save still succeeds
     db.commit()
     db.refresh(bom)
     return _bom_out(bom)

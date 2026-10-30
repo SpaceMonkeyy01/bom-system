@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     environment: str = "dev"
     airtable_token: str | None = None
     airtable_base_id: str | None = None
+    airtable_tables: list[str] = []  # e.g. ["November 2026", "October 2026"] — the month tabs to poll
+    airtable_auto_write_back: bool = True  # push to Airtable when a BOM is saved (if configured)
     jwt_secret: str = "change-me-in-production-use-32-plus-bytes"
     jwt_ttl_hours: int = 12
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]

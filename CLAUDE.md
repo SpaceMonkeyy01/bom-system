@@ -22,6 +22,8 @@ backend/
   app/services/inventory.py  iFlow file import, review queue (link/create), add rates, merge materials
   app/api/inventory_routes.py  /inventory/stock-imports, /inventory/review-queue, /materials/{id}/rates|merge,
                            /rate-policies, /categories, /uoms, /suppliers
+  app/services/airtable.py  HttpAirtableClient / FakeAirtableClient, pull_orders, write_back, retry_failed
+  app/api/sync_routes.py  /sync/airtable/status|pull|upload-csv|retry-failed, /boms/{id}/write-back, /sync/write-backs
   app/api/                FastAPI routes + pydantic schemas (prefix /api)
   app/seed/               loaders from the spreadsheets in data/raw (idempotent): python -m app.seed.run
   scripts/regression_october.py  replays all 555 October sheet blocks through the engine (must stay 100%)
@@ -65,7 +67,13 @@ Postgres 14+ is required. Dev credentials in `.env.example` (bom/bom). Never com
 
 - Stack: FastAPI + SQLAlchemy 2 + Alembic + PostgreSQL; React front end; host on Render.
 - Airtable stays the order master (one table per month); the app syncs orders and writes back
-  BOM Price (PKR/USD), production cost, box dimension, est. shipment cost, BOM Done.
+  BOM Price (PKR/USD), production cost, box dimension, est. shipment cost, BOM Done, BOM Done Time.
+  Configure `BOM_AIRTABLE_TOKEN`, `BOM_AIRTABLE_BASE_ID`, `BOM_AIRTABLE_TABLES` (month tab names). Without a
+  token the app still works: orders come in via `POST /sync/airtable/upload-csv` (the view's CSV export) and
+  write-backs are logged as failed for later retry. Saving a BOM auto-pushes when configured
+  (`BOM_AIRTABLE_AUTO_WRITE_BACK`). Incremental pulls use LAST_MODIFIED_TIME since the newest `synced_at`.
+  Field names live in `AIRTABLE_WRITE_FIELDS` and `map_airtable_record`; a manual sign-type mapping in the
+  app is never overwritten by a pull.
 - iFlow is stock truth; v1 imports the "MAIN STORE STOCK SUMMARY" export per store, API later if one exists.
 - Rate sources: `bom` (manual, effective-dated) and `iflow:<store>` (derived from imports); global policy
   prefers `bom`, falls back to `iflow:BS` then `iflow:NS`, flags rates older than 60 days as stale.
@@ -92,7 +100,8 @@ Postgres 14+ is required. Dev credentials in `.env.example` (bom/bom). Never com
 2. Template editor UI (port the prototype's Formulas tab UX) on the editor API: POST /templates/drafts,
    PUT /templates/{id}, POST /templates/validate, POST /templates/{id}/preview, POST /templates/{id}/publish,
    GET /templates/flagged (to-do list), GET /sign-types/unmapped + PATCH /sign-types/{id} (aliases re-map orders).
-3. Airtable live sync + write-back (`app/seed/orders.py::map_airtable_record` is the field mapping).
+3. Sync UI: Airtable status card, pull now, CSV upload fallback, write-back log with retry; a scheduled pull
+   (every 15 min) once a token exists — a small cron/worker on Render calling pull_all.
 4. Inventory UI: stock upload per store, review queue (suggestions → link / create), material detail with
    rate history + add rate (bom/supplier), merge duplicates, rate policy settings.
 5. UOM conversions (e.g. quart → grams by density) so container-priced rates can serve gram lines.
