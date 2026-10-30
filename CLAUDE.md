@@ -28,6 +28,8 @@ backend/
                            (filter by pasted order codes, weekly bucket, order-date or saved-date range), GET /reports/weekly-buckets
   app/api/                FastAPI routes + pydantic schemas (prefix /api)
   app/seed/               loaders from the spreadsheets in data/raw (idempotent): python -m app.seed.run
+  app/seed/sheet_blocks.py  parser for the sheet's per-order blocks (shared by regression + historical import)
+  app/seed/historical_boms.py  October sheet blocks -> BOM(status=imported); 465 orders, totals match Airtable to the rupee
   scripts/regression_october.py  replays all 555 October sheet blocks through the engine (must stay 100%)
   alembic/                migrations (autogenerate from app.models)
   tests/                  pytest (engine tests; add API/service tests alongside)
@@ -64,6 +66,8 @@ Postgres 14+ is required. Dev credentials in `.env.example` (bom/bom). Never com
 - Templates are versioned; publishing never mutates a saved BOM. Flagged lines (`ComponentLine.notes`)
   are the template owner's to-do list from the import.
 - Soft-delete only for anything a saved BOM references.
+- BOM.status: draft | saved | written_back | imported. Imported = historical sheet record (no template, rate_source
+  "sheet", wastage folded into the sheet's summary). Reports prefer an app-made BOM over an imported one.
 - Commit messages: imperative subject, body explains why. Run `pytest` before committing.
 
 ## Decisions so far

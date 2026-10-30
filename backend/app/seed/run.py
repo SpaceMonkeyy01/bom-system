@@ -11,6 +11,7 @@ from app.seed.common import ensure_cost_heads, ensure_default_rate_policy, ensur
 from app.seed.materials import seed_materials, seed_suppliers
 from app.seed.orders import seed_orders
 from app.seed.rates_stock import seed_bom_rates, seed_stock
+from app.seed.historical_boms import import_october_boms
 from app.seed.templates import seed_sign_types_and_templates
 
 STEPS = {
@@ -20,6 +21,7 @@ STEPS = {
     "rates": seed_bom_rates,
     "stock": seed_stock,
     "orders": seed_orders,
+    "historical_boms": import_october_boms,
 }
 
 

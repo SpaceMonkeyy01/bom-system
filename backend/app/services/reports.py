@@ -85,7 +85,8 @@ def _latest_boms(db: Session, flt: ReportFilter) -> tuple[list[Order], dict[int,
         if flt.saved_to:
             saved = [b for b in saved if b.saved_at and b.saved_at.date() <= flt.saved_to]
         if saved:
-            latest[o.id] = max(saved, key=lambda b: b.version)
+            app_made = [b for b in saved if b.status != "imported"]
+            latest[o.id] = max(app_made or saved, key=lambda b: b.version)
     if flt.order_codes:  # keep the pasted order
         pos = {c.strip(): i for i, c in enumerate(flt.order_codes)}
         orders.sort(key=lambda o: pos.get(o.code, 10**9))
