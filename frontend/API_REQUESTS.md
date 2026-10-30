@@ -3,6 +3,15 @@
 The front end doesn't edit `backend/`. These are the changes it would like, with what it does until then.
 Nothing here is blocking; no screen uses mock data.
 
+## Done (backend)
+
+- 1 `needs_bom` is now applied in SQL before the limit (EXISTS on saved BOMs).
+- 2 `GET /api/materials` returns `cost_tag` and `rate_uom`.
+- 3 `GET /api/cost-heads` lists heads with `default_wastage_pct`.
+- 4 `GET /api/orders/{id}/images/{index}?thumb=true|false` proxies the attachment; when the stored URL has
+  expired and Airtable is configured it re-reads the record for fresh URLs and retries. Prefer this over
+  `images[i].url` in `<img src>`. Without a token, expired links 404 — show the placeholder.
+
 ## TODO
 
 ### 1. `GET /api/orders`: apply `needs_bom` before `limit`

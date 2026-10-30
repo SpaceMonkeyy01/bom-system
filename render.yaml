@@ -1,0 +1,83 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# One click: Dashboard → New → Blueprint → this repo. Fill the sync() env vars after the first deploy.
+databases:
+  - name: bom-db
+    plan: basic-256mb        # upgrade when the team is live; data is small (tens of MB)
+    databaseName: bom
+    user: bom
+
+services:
+  - type: web
+    name: bom-api
+    runtime: python
+    plan: starter
+    rootDir: backend
+    buildCommand: pip install -e .
+    preDeployCommand: alembic upgrade head
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: BOM_ENVIRONMENT
+        value: production
+      - key: BOM_DATABASE_URL
+        fromDatabase:
+          name: bom-db
+          property: connectionString
+      - key: BOM_JWT_SECRET
+        generateValue: true
+      - key: BOM_JWT_TTL_HOURS
+        value: "12"
+      - key: BOM_PKR_PER_USD
+        value: "270"
+      - key: BOM_CORS_ORIGINS
+        value: '["https://bom-web.onrender.com"]'   # set to the static site's URL after it exists
+      - key: BOM_BOOTSTRAP_ADMIN_EMAIL
+        sync: false   # set in the dashboard: first admin is created on first start when the users table is empty
+      - key: BOM_BOOTSTRAP_ADMIN_PASSWORD
+        sync: false
+      - key: BOM_AIRTABLE_TOKEN
+        sync: false
+      - key: BOM_AIRTABLE_BASE_ID
+        sync: false
+      - key: BOM_AIRTABLE_TABLES
+        value: '[]'   # e.g. '["November 2026","October 2026"]'
+      - key: BOM_AIRTABLE_AUTO_WRITE_BACK
+        value: "true"
+
+  - type: web
+    name: bom-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_BASE
+        value: https://bom-api.onrender.com   # the API service's URL
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  - type: cron
+    name: bom-airtable-pull
+    runtime: python
+    plan: starter
+    rootDir: backend
+    schedule: "*/15 * * * *"
+    buildCommand: pip install -e .
+    startCommand: python -m app.jobs.airtable_pull
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: BOM_DATABASE_URL
+        fromDatabase:
+          name: bom-db
+          property: connectionString
+      - key: BOM_AIRTABLE_TOKEN
+        sync: false
+      - key: BOM_AIRTABLE_BASE_ID
+        sync: false
+      - key: BOM_AIRTABLE_TABLES
+        value: '[]'

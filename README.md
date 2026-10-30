@@ -24,3 +24,20 @@ uvicorn app.main:app --reload
 ```
 
 Requires PostgreSQL 14+. Default URL: `postgresql+psycopg://bom:bom@localhost:5432/bom`.
+
+## Deploy (Render)
+
+`render.yaml` is a Render Blueprint: **Dashboard → New → Blueprint → this repo**. It creates a Postgres
+database, the API (`bom-api`, runs `alembic upgrade head` before each deploy), the static front end (`bom-web`)
+and a 15-minute cron that pulls orders from Airtable and retries failed write-backs.
+
+After the first deploy, set in the Render dashboard:
+
+- `bom-api`: `BOM_BOOTSTRAP_ADMIN_EMAIL` / `BOM_BOOTSTRAP_ADMIN_PASSWORD` (first admin, created on first start),
+  `BOM_CORS_ORIGINS` to the `bom-web` URL, and the Airtable vars when you have a token.
+- `bom-web`: `VITE_API_BASE` to the `bom-api` URL (then redeploy the static site).
+
+Seeding production: run `python -m app.seed.run` once from the API service's shell with the four source files
+copied to `backend/data/raw/` (or seed a local database and `pg_dump | psql` it to Render).
+
+Never set `BOM_JWT_SECRET` by hand — the blueprint generates it.

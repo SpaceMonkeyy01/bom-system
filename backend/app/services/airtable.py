@@ -35,6 +35,8 @@ AIRTABLE_WRITE_FIELDS = {
 class AirtableClient(Protocol):
     def list_records(self, table: str, modified_since: datetime | None = None) -> list[dict]: ...
 
+    def get_record(self, table: str, record_id: str) -> dict: ...
+
     def update_record(self, table: str, record_id: str, fields: dict[str, Any]) -> dict: ...
 
 
@@ -63,6 +65,11 @@ class HttpAirtableClient:
             if not offset:
                 return out
 
+    def get_record(self, table: str, record_id: str) -> dict:
+        r = self.http.get(f"/{table}/{record_id}")
+        r.raise_for_status()
+        return r.json()
+
     def update_record(self, table: str, record_id: str, fields: dict[str, Any]) -> dict:
         r = self.http.patch(f"/{table}/{record_id}", json={"fields": fields, "typecast": True})
         r.raise_for_status()
@@ -78,6 +85,12 @@ class FakeAirtableClient:
 
     def list_records(self, table: str, modified_since: datetime | None = None) -> list[dict]:
         return list(self.tables.get(table, []))
+
+    def get_record(self, table: str, record_id: str) -> dict:
+        for rec in self.tables.get(table, []):
+            if rec["id"] == record_id:
+                return rec
+        raise KeyError(record_id)
 
     def update_record(self, table: str, record_id: str, fields: dict[str, Any]) -> dict:
         self.updates.append((table, record_id, fields))
@@ -211,3 +224,25 @@ def retry_failed(db: Session, client: AirtableClient, limit: int = 50) -> int:
             n += 1
     db.flush()
     return n
+
+
+# ---------------------------------------------------------------- attachments
+
+IMAGE_FIELDS = {"CDR design": "cdr", "Design Image": "design", "BOM Images": "bom", "Real-time Image": "photo", "PDF file": "pdf"}
+
+
+def refresh_order_images(db: Session, client: AirtableClient, order: Order) -> list[dict]:
+    """Airtable attachment URLs are signed and expire after a few hours; re-read the record to get fresh ones."""
+    if not (order.airtable_record_id and order.airtable_table):
+        return order.images or []
+    rec = client.get_record(order.airtable_table, order.airtable_record_id)
+    images: list[dict] = []
+    for field_name, kind in IMAGE_FIELDS.items():
+        for a in rec.get("fields", {}).get(field_name, []) or []:
+            if isinstance(a, dict) and a.get("url"):
+                thumb = (a.get("thumbnails") or {}).get("large", {}).get("url")
+                images.append({"kind": kind, "filename": a.get("filename", "file"), "url": a["url"], "thumb": thumb, "id": a.get("id")})
+    order.images = images
+    order.images_refreshed_at = datetime.now(timezone.utc)
+    db.flush()
+    return images

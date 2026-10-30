@@ -31,7 +31,8 @@ class Order(TimestampMixin, Base):
     order_date: Mapped[date | None] = mapped_column(Date)
     dispatch_by: Mapped[date | None] = mapped_column(Date)
     weekly_bucket: Mapped[str | None] = mapped_column(String(60))  # "October - 2nd week"
-    images: Mapped[list[dict]] = mapped_column(JSON, default=list)  # [{kind, url, filename}]
+    images: Mapped[list[dict]] = mapped_column(JSON, default=list)  # [{kind, url, filename, thumb?, id?}]
+    images_refreshed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     etsy_price_usd: Mapped[float | None] = mapped_column(Numeric(12, 2))
     calculator_production_cost_usd: Mapped[float | None] = mapped_column(Numeric(12, 2))
     calculator_shipping_cost_usd: Mapped[float | None] = mapped_column(Numeric(12, 2))

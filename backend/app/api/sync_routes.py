@@ -6,7 +6,9 @@ import csv
 import io
 from datetime import datetime
 
+import httpx
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -15,7 +17,7 @@ from app.config import settings
 from app.db import get_session
 from app.models import BOM, Order, User, WriteBack
 from app.seed.orders import map_airtable_record, sign_type_resolver
-from app.services.airtable import get_client, pull_all, retry_failed, write_back
+from app.services.airtable import get_client, pull_all, refresh_order_images, retry_failed, write_back
 from app.services.auth import current_user, require
 
 router = APIRouter(dependencies=[Depends(current_user)])
@@ -120,3 +122,36 @@ def list_write_backs(status: str | None = None, limit: int = 100, db: Session = 
     if status:
         stmt = stmt.where(WriteBack.status == status)
     return [{"id": w.id, "bom_id": w.bom_id, "order_code": w.bom.order.code, "status": w.status, "error": w.error, "sent_at": w.sent_at, "created_at": w.created_at, "fields": w.fields_sent} for w in db.scalars(stmt)]
+
+
+@router.get("/orders/{order_id}/images/{index}")
+def order_image(order_id: int, index: int, thumb: bool = False, db: Session = Depends(get_session)):
+    """Serve an order attachment through the API. Airtable's signed URLs expire, so when the stored URL fails and
+    Airtable is configured, the record is re-read for fresh URLs and the image is retried once."""
+    order = db.get(Order, order_id)
+    if not order:
+        raise HTTPException(404, "Order not found")
+
+    def fetch(images):
+        if index < 0 or index >= len(images):
+            return None
+        url = (images[index].get("thumb") if thumb else None) or images[index]["url"]
+        try:
+            r = httpx.get(url, timeout=20, follow_redirects=True)
+        except httpx.HTTPError:
+            return None
+        return r if r.status_code == 200 else None
+
+    r = fetch(order.images or [])
+    if r is None:
+        client = get_client()
+        if client:
+            try:
+                images = refresh_order_images(db, client, order)
+                db.commit()
+                r = fetch(images)
+            except Exception:
+                r = None
+    if r is None:
+        raise HTTPException(404, "Image not available (the Airtable link has expired and no live connection is configured)")
+    return Response(r.content, media_type=r.headers.get("content-type", "application/octet-stream"), headers={"Cache-Control": "private, max-age=3600"})

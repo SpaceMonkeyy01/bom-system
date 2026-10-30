@@ -32,7 +32,8 @@ backend/
   alembic/                migrations (autogenerate from app.models)
   tests/                  pytest (engine tests; add API/service tests alongside)
 data/raw/                 source spreadsheets, git-ignored — ask Saad for them (see data/README.md)
-frontend/                 not started: React, Create-BOM flow first
+frontend/                 Vite + React + Mantine (owned by the local Claude Code session); API_REQUESTS.md = asks for the backend
+render.yaml               Render Blueprint: Postgres + API + static web + 15-min Airtable cron (app/jobs/airtable_pull.py)
 ```
 
 ## Run
@@ -102,8 +103,7 @@ Postgres 14+ is required. Dev credentials in `.env.example` (bom/bom). Never com
 2. Template editor UI (port the prototype's Formulas tab UX) on the editor API: POST /templates/drafts,
    PUT /templates/{id}, POST /templates/validate, POST /templates/{id}/preview, POST /templates/{id}/publish,
    GET /templates/flagged (to-do list), GET /sign-types/unmapped + PATCH /sign-types/{id} (aliases re-map orders).
-3. Sync UI: Airtable status card, pull now, CSV upload fallback, write-back log with retry; a scheduled pull
-   (every 15 min) once a token exists — a small cron/worker on Render calling pull_all.
+3. Sync UI: Airtable status card, pull now, CSV upload fallback, write-back log with retry. (Cron exists.)
 4. Inventory UI: stock upload per store, review queue (suggestions → link / create), material detail with
    rate history + add rate (bom/supplier), merge duplicates, rate policy settings.
 5. Reports UI: weekly funds (pick bucket or paste codes → table + download xlsx), by-material view.

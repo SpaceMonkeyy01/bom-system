@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.api import schemas as S
 from app.db import get_session
-from app.models import BOM, Material, Order, SignType, Template
+from app.models import BOM, CostHead, Material, Order, SignType, Template
+from app.seed.common import cost_tag_for_category
 from app.models import User
 from app.services.auth import current_user, require
 from app.services.bom import BOMRequest, ExtraLine, build_bom, save_bom
@@ -63,8 +64,25 @@ def search_materials(q: str = Query("", min_length=0), active_only: bool = True,
     out = []
     for m in db.scalars(stmt):
         rr = resolver.resolve(m)
-        out.append(S.MaterialSearchOut(id=m.id, name=m.name, category_path=m.category.path if m.category else None, uom=m.uom.code if m.uom else None, active=m.active, rate=rr.rate if rr.source != "none" else None, rate_source=rr.source if rr.source != "none" else None))
+        out.append(
+            S.MaterialSearchOut(
+                id=m.id,
+                name=m.name,
+                category_path=m.category.path if m.category else None,
+                uom=m.uom.code if m.uom else None,
+                active=m.active,
+                rate=rr.rate if rr.source != "none" else None,
+                rate_source=rr.source if rr.source != "none" else None,
+                rate_uom=rr.uom,
+                cost_tag=cost_tag_for_category(m.category.path if m.category else None, m.name),
+            )
+        )
     return out
+
+
+@router.get("/cost-heads")
+def list_cost_heads(db: Session = Depends(get_session)):
+    return [{"id": h.id, "name": h.name, "default_wastage_pct": float(h.default_wastage_pct), "aliases": h.aliases} for h in db.scalars(select(CostHead).order_by(CostHead.sort_order))]
 
 
 @router.get("/materials/{material_id}", response_model=S.MaterialOut)
@@ -105,13 +123,13 @@ def list_orders(q: str = "", needs_bom: bool | None = None, limit: int = 200, db
     stmt = select(Order).options(selectinload(Order.sign_type), selectinload(Order.boms))
     if q:
         stmt = stmt.where(or_(Order.code.ilike(f"%{q}%"), Order.account_name.ilike(f"%{q}%"), Order.sign_type_raw.ilike(f"%{q}%")))
-    stmt = stmt.order_by(Order.dispatch_by.nulls_last(), Order.code).limit(limit)
-    rows = [_order_out(o) for o in db.scalars(stmt)]
+    has_saved = select(BOM.id).where(BOM.order_id == Order.id, BOM.status.in_(("saved", "written_back", "imported"))).exists()
     if needs_bom is True:
-        rows = [r for r in rows if r.bom_count == 0]
+        stmt = stmt.where(~has_saved)
     elif needs_bom is False:
-        rows = [r for r in rows if r.bom_count > 0]
-    return rows
+        stmt = stmt.where(has_saved)
+    stmt = stmt.order_by(Order.dispatch_by.nulls_last(), Order.code).limit(limit)
+    return [_order_out(o) for o in db.scalars(stmt)]
 
 
 @router.get("/orders/{order_id}", response_model=S.OrderOut)

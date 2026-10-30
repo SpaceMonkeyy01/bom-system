@@ -107,6 +107,8 @@ class MaterialSearchOut(BaseModel):
     active: bool
     rate: float | None
     rate_source: str | None
+    rate_uom: str | None = None
+    cost_tag: str | None = None
 
 
 # ---------------------------------------------------------------- orders & BOMs
