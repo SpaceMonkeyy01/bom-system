@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { api, errorMessage } from '../api/client'
 import type { Order } from '../api/types'
 import { useAuth } from '../auth/AuthProvider'
+import { DashboardStrip } from '../components/DashboardStrip'
 import { OrderThumb } from '../components/OrderThumb'
 import { fmtDate, fmtSize, isOverdue } from '../lib/format'
 
@@ -36,6 +37,7 @@ export function QueuePage() {
 
   return (
     <>
+      <DashboardStrip />
       <Group mb="xs" gap="sm">
         <TextInput
           placeholder="Search code, account or sign type"

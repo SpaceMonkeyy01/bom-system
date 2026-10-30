@@ -18,8 +18,18 @@ body {
   border: 1px solid var(--mantine-color-gray-3);
   border-radius: var(--mantine-radius-sm);
   /* the wrapper scrolls, so the sticky header has something to stick to */
-  max-height: calc(100vh - 100px);
+  max-height: max(320px, calc(100vh - 180px));
   overflow: auto;
+}
+
+.stat-card {
+  min-width: 96px;
+  padding: 4px 10px;
+}
+
+.stat-buckets {
+  flex: 1;
+  min-width: 200px;
 }
 
 /* On the BOM page the header sticks below the totals bar as the page itself scrolls. */

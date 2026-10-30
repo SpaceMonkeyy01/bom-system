@@ -96,7 +96,7 @@ function FrozenQty({ row }: { row: LineRow }) {
       {isEdited(row.line) && (
         <Tooltip label={`Edited. Formula ${formula ?? ''} gave ${fmtNum(auto, 3)}`} withinPortal>
           <span className="qty-edited" aria-label="Edited quantity">
-            ✎
+            {'✎︎'}
           </span>
         </Tooltip>
       )}
