@@ -8,6 +8,7 @@ import { useAuth } from '../auth/AuthProvider'
 import { BomLinesTable } from '../components/BomLinesTable'
 import { OrderFacts } from '../components/OrderFacts'
 import { PageError, PageLoader } from '../components/PageState'
+import { RateChangesBanner } from '../components/RateChangesBanner'
 import { TotalsPanel } from '../components/TotalsPanel'
 import { frozenRows, isImported } from '../lib/bom'
 import { fmtDate, fmtUsd } from '../lib/format'
@@ -138,6 +139,7 @@ function BomDetail({ bomId }: { bomId: number }) {
             <Text size="xs">Saved as version {saved.version}.</Text>
           </Alert>
         )}
+        <RateChangesBanner bom={saved} />
 
         <BomLinesTable rows={rows} stickyOffset={BAR_HEIGHT} />
 
