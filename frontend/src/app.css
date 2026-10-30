@@ -1151,3 +1151,18 @@ a.hero:hover {
   flex-direction: column;
   gap: 12px;
 }
+
+/* ---------------------------------------------------------------- saved BOM */
+.inputs-used {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+
+.bom-lines th:first-child {
+  min-width: 220px;
+}
+
+.bom-lines td:nth-child(2) {
+  white-space: nowrap;
+}

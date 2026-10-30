@@ -19,9 +19,13 @@ interface Props {
   /** Content under the table, inside the card, e.g. "Add material". */
   footer?: ReactNode
   compact?: boolean
+  /** Material names whose rate has moved since this BOM was saved; tagged "changed" next to the rate. */
+  changed?: Set<string>
+  /** Extra content at the right of the card head, e.g. a download link. */
+  headRight?: ReactNode
 }
 
-export function BomLinesTable({ rows, title = 'Lines', meta, renderQty, renderCostHead, renderActions, footer, compact }: Props) {
+export function BomLinesTable({ rows, title = 'Lines', meta, renderQty, renderCostHead, renderActions, footer, compact, changed, headRight }: Props) {
   const [showZero, setShowZero] = useState(false)
   const hiddenCount = rows.filter(isHideable).length
   const visible = showZero ? rows : rows.filter((r) => !isHideable(r))
@@ -36,6 +40,7 @@ export function BomLinesTable({ rows, title = 'Lines', meta, renderQty, renderCo
           {withQty} with quantity{hiddenCount ? ` · ${hiddenCount} at zero hidden` : ''}
         </span>
         <div className="card-head-right">
+          {headRight}
           <Checkbox
             size="xs"
             checked={showZero}
@@ -85,7 +90,15 @@ export function BomLinesTable({ rows, title = 'Lines', meta, renderQty, renderCo
                   <td style={{ color: 'var(--slate)' }}>{line.usage}</td>
                   <td className="num nowrap">{renderQty ? renderQty(row) : <FrozenQty row={row} />}</td>
                   <td>{line.uom}</td>
-                  <td className="num">{pending ? '…' : fmtNum(line.rate)}</td>
+                  <td className="num nowrap">
+                    {pending ? '…' : fmtNum(line.rate)}
+                    {changed?.has(line.material_name) && (
+                      <>
+                        {' '}
+                        <RateTag tone="pending">changed</RateTag>
+                      </>
+                    )}
+                  </td>
                   <td>{!pending && <RateTag tone={tag.tone}>{tag.label}</RateTag>}</td>
                   <td className="num">{pending ? '…' : `${fmtNum(line.wastage_pct)} %`}</td>
                   <td className="num">

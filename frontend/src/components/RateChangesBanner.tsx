@@ -1,23 +1,30 @@
-import { Alert, Badge, Button, Group, Modal, Table, Text } from '@mantine/core'
+import { Button, Modal, Text, Title } from '@mantine/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, errorMessage } from '../api/client'
 import type { Bom, BomDiff, RateChanges, RecalcResult } from '../api/types'
 import { useAuth } from '../auth/AuthProvider'
+import { rateTag } from '../lib/bom'
 import { fmtNum, fmtPkr } from '../lib/format'
+import { RateTag } from './ui'
 
-/** "Rates have changed since this BOM was saved": shown on saved BOMs with a Recalculate flow behind it. */
-export function RateChangesBanner({ bom }: { bom: Bom }) {
-  const { canWrite } = useAuth()
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const [open, setOpen] = useState(false)
-  const changes = useQuery({
+/** Loads the rate changes for a saved BOM; shared by the banner and the lines table's "changed" tags. */
+export function useRateChanges(bom: Bom) {
+  return useQuery({
     queryKey: ['rate-changes', bom.id],
     queryFn: ({ signal }) => api<RateChanges>(`/boms/${bom.id}/rate-changes`, { signal }),
     enabled: bom.id !== null && bom.status !== 'imported',
   })
+}
+
+/** The headline on a saved BOM whose rates have moved: what changed, what it would cost today, recalc → preview → save. */
+export function RateChangesBanner({ bom, changes }: { bom: Bom; changes: RateChanges | undefined }) {
+  const { canWrite } = useAuth()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const [dismissed, setDismissed] = useState(false)
   const recalc = useMutation({
     mutationFn: () => api<RecalcResult>(`/boms/${bom.id}/recalculate`, { method: 'POST' }),
     onSuccess: () => setOpen(true),
@@ -31,141 +38,176 @@ export function RateChangesBanner({ bom }: { bom: Bom }) {
     },
   })
 
-  if (!changes.data || changes.data.count === 0) return null
-  const n = changes.data.count
+  if (!changes || changes.count === 0 || dismissed) return null
+  const n = changes.count
+  const next = bom.version + 1
+  const diff = recalc.data?.diff
 
   return (
     <>
-      <Alert color="yellow" p="xs" mt={6} mb={6} data-testid="rate-changes">
-        <Group justify="space-between" wrap="nowrap">
-          <Text size="xs">
-            Rates have changed since this BOM was saved: {n} line{n === 1 ? '' : 's'} would cost differently today (
-            {changes.data.changed_lines
-              .slice(0, 3)
-              .map((c) => `${c.line}: ${fmtNum(c.frozen)} → ${fmtNum(c.current)}`)
-              .join('; ')}
-            {n > 3 ? '; …' : ''}).
-          </Text>
+      <section className="banner-pending" aria-labelledby="rc-h" data-testid="rate-changes">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+          <Title order={2} id="rc-h" style={{ color: 'var(--pending)' }}>
+            {n} rate{n === 1 ? ' has' : 's have'} changed since this BOM was saved
+          </Title>
+          <p style={{ margin: 0 }}>
+            {diff ? (
+              <>
+                Recalculating with today’s rates would make it <strong>PKR {fmtPkr(diff.grand_total[1])}</strong> (<Delta diff={diff} />).
+              </>
+            ) : (
+              'Recalculating with today’s rates shows the new total before anything is written.'
+            )}{' '}
+            Nothing is written until you save the new version.
+          </p>
+          <table className="mini-table" style={{ width: 'auto' }}>
+            <thead>
+              <tr>
+                <th style={{ background: 'transparent', paddingLeft: 0 }}>Line</th>
+                <th style={{ background: 'transparent', textAlign: 'right' }}>Saved</th>
+                <th style={{ background: 'transparent', textAlign: 'right' }}>Today</th>
+                <th style={{ background: 'transparent' }}>Why</th>
+              </tr>
+            </thead>
+            <tbody>
+              {changes.changed_lines.map((c) => {
+                const tag = rateTag({ rate_source: c.source, rate_stale: false, rate_date: null })
+                return (
+                  <tr key={c.line}>
+                    <td style={{ paddingLeft: 0, fontWeight: 700, border: 0 }}>{c.line}</td>
+                    <td className="num" style={{ border: 0 }}>
+                      {fmtNum(c.frozen)}
+                    </td>
+                    <td className="num" style={{ border: 0, fontWeight: 700 }}>
+                      {fmtNum(c.current)}
+                    </td>
+                    <td style={{ border: 0 }}>
+                      <RateTag tone={tag.tone}>{tag.label}</RateTag> rate is current today
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+          {recalc.isError && (
+            <Text size="xs" c="var(--missing)">
+              {errorMessage(recalc.error)}
+            </Text>
+          )}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {canWrite && (
-            <Button size="compact-xs" variant="light" color="yellow" loading={recalc.isPending} onClick={() => recalc.mutate()}>
-              Recalculate
+            <Button loading={recalc.isPending} onClick={() => (recalc.data ? setOpen(true) : recalc.mutate())}>
+              Recalculate → preview v{next}
             </Button>
           )}
-        </Group>
-        {recalc.isError && (
-          <Text size="xs" c="red" mt={4}>
-            {errorMessage(recalc.error)}
-          </Text>
-        )}
-      </Alert>
-      <Modal opened={open} onClose={() => setOpen(false)} title={`Recalculated v${bom.version} at today’s rates`} size="xl">
-        {recalc.data && <DiffTable diff={recalc.data.diff} />}
+          <Button variant="default" onClick={() => setDismissed(true)}>
+            Keep v{bom.version}
+          </Button>
+        </div>
+      </section>
+      <Modal opened={open} onClose={() => setOpen(false)} title={`Preview v${next} at today’s rates`} size="xl">
+        {diff && <DiffTable diff={diff} />}
         {saveNew.isError && (
-          <Text size="xs" c="red" mt="xs">
+          <Text size="xs" c="var(--missing)" mt="xs">
             {errorMessage(saveNew.error)}
           </Text>
         )}
-        <Group justify="flex-end" mt="md">
-          <Button size="xs" variant="default" onClick={() => setOpen(false)}>
-            Close
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+          <Button variant="default" onClick={() => setOpen(false)}>
+            Keep v{bom.version}
           </Button>
-          <Button size="xs" loading={saveNew.isPending} onClick={() => saveNew.mutate()}>
+          <Button loading={saveNew.isPending} onClick={() => saveNew.mutate()}>
             Save as new version
           </Button>
-        </Group>
+        </div>
       </Modal>
     </>
   )
 }
 
-function DiffTable({ diff }: { diff: BomDiff }) {
-  const [before, after] = diff.grand_total
+function Delta({ diff }: { diff: BomDiff }) {
+  const [before] = diff.grand_total
+  const pct = before ? (diff.delta_pkr / before) * 100 : 0
   const up = diff.delta_pkr > 0
   return (
+    <span className={up ? 'delta-up' : diff.delta_pkr < 0 ? 'delta-down' : undefined}>
+      {up ? '+' : ''}
+      {fmtPkr(diff.delta_pkr)}, {up ? '+' : ''}
+      {fmtNum(pct, 1)} %
+    </span>
+  )
+}
+
+const lineLabel = (key: string) => key.replace('|', ' · ').replace(/ · $/, '')
+
+function DiffTable({ diff }: { diff: BomDiff }) {
+  const [before, after] = diff.grand_total
+  return (
     <>
-      <Group gap="md" mb="xs">
-        <Text size="sm">
-          Grand total <b>PKR {fmtPkr(before)}</b> → <b>PKR {fmtPkr(after)}</b>
-        </Text>
-        <Badge color={diff.delta_pkr === 0 ? 'gray' : up ? 'red' : 'green'} variant="light" tt="none" size="lg">
-          {up ? '+' : ''}
-          {fmtPkr(diff.delta_pkr)}
-        </Badge>
-        {diff.template_changed && (
-          <Badge color="blue" variant="light" tt="none">
-            uses the current published template
-          </Badge>
-        )}
-      </Group>
+      <p style={{ margin: '0 0 12px' }}>
+        Grand total <strong>PKR {fmtPkr(before)}</strong> → <strong>PKR {fmtPkr(after)}</strong> (<Delta diff={diff} />)
+        {diff.template_changed && <RateTag tone="info">uses the current published template</RateTag>}
+      </p>
       {diff.changed.length + diff.added.length + diff.removed.length === 0 ? (
-        <Text size="xs" c="dimmed">
+        <Text size="sm" c="var(--slate)">
           No line differs.
         </Text>
       ) : (
-        <div className="table-wrap">
-          <Table className="dense-table">
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Line</Table.Th>
-                <Table.Th className="num">Qty</Table.Th>
-                <Table.Th className="num">Rate</Table.Th>
-                <Table.Th>Source</Table.Th>
-                <Table.Th className="num">Total</Table.Th>
-                <Table.Th className="num">Δ</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
+        <div className="card table-wrap">
+          <table className="tbl tbl-dense mantine-Table-table">
+            <thead>
+              <tr>
+                <th>Line</th>
+                <th className="num">Qty</th>
+                <th className="num">Rate</th>
+                <th>Source</th>
+                <th className="num">Total</th>
+                <th className="num">Δ</th>
+              </tr>
+            </thead>
+            <tbody>
               {diff.changed.map((c) => (
-                <Table.Tr key={c.line}>
-                  <Table.Td>{c.line.replace('|', ' · ').replace(/ · $/, '')}</Table.Td>
-                  <Table.Td className="num">{c.qty[0] === c.qty[1] ? fmtNum(c.qty[1], 3) : `${fmtNum(c.qty[0], 3)} → ${fmtNum(c.qty[1], 3)}`}</Table.Td>
-                  <Table.Td className="num">{c.rate[0] === c.rate[1] ? fmtNum(c.rate[1]) : `${fmtNum(c.rate[0])} → ${fmtNum(c.rate[1])}`}</Table.Td>
-                  <Table.Td>{c.rate_source[0] === c.rate_source[1] ? c.rate_source[1] : `${c.rate_source[0]} → ${c.rate_source[1]}`}</Table.Td>
-                  <Table.Td className="num">
+                <tr key={c.line}>
+                  <td>{lineLabel(c.line)}</td>
+                  <td className="num">{c.qty[0] === c.qty[1] ? fmtNum(c.qty[1], 3) : `${fmtNum(c.qty[0], 3)} → ${fmtNum(c.qty[1], 3)}`}</td>
+                  <td className="num">{c.rate[0] === c.rate[1] ? fmtNum(c.rate[1]) : `${fmtNum(c.rate[0])} → ${fmtNum(c.rate[1])}`}</td>
+                  <td>{c.rate_source[0] === c.rate_source[1] ? c.rate_source[1] : `${c.rate_source[0]} → ${c.rate_source[1]}`}</td>
+                  <td className="num">
                     {fmtPkr(c.total[0])} → {fmtPkr(c.total[1])}
-                  </Table.Td>
-                  <Table.Td className="num" c={c.total[1] > c.total[0] ? 'red' : 'green'}>
+                  </td>
+                  <td className={`num ${c.total[1] > c.total[0] ? 'delta-up' : 'delta-down'}`}>
                     {c.total[1] > c.total[0] ? '+' : ''}
                     {fmtPkr(c.total[1] - c.total[0])}
-                  </Table.Td>
-                </Table.Tr>
+                  </td>
+                </tr>
               ))}
               {diff.added.map((c) => (
-                <Table.Tr key={`a-${c.line}`}>
-                  <Table.Td>
-                    <Badge size="xs" color="green" variant="light" mr={4}>
-                      added
-                    </Badge>
-                    {c.line.replace('|', ' · ').replace(/ · $/, '')}
-                  </Table.Td>
-                  <Table.Td className="num">{fmtNum(c.qty, 3)}</Table.Td>
-                  <Table.Td className="num">{fmtNum(c.rate)}</Table.Td>
-                  <Table.Td />
-                  <Table.Td className="num">{fmtPkr(c.total)}</Table.Td>
-                  <Table.Td className="num" c="red">
-                    +{fmtPkr(c.total)}
-                  </Table.Td>
-                </Table.Tr>
+                <tr key={`a-${c.line}`}>
+                  <td>
+                    <RateTag tone="done">added</RateTag> {lineLabel(c.line)}
+                  </td>
+                  <td className="num">{fmtNum(c.qty, 3)}</td>
+                  <td className="num">{fmtNum(c.rate)}</td>
+                  <td />
+                  <td className="num">{fmtPkr(c.total)}</td>
+                  <td className="num delta-up">+{fmtPkr(c.total)}</td>
+                </tr>
               ))}
               {diff.removed.map((c) => (
-                <Table.Tr key={`r-${c.line}`}>
-                  <Table.Td>
-                    <Badge size="xs" color="red" variant="light" mr={4}>
-                      removed
-                    </Badge>
-                    {c.line.replace('|', ' · ').replace(/ · $/, '')}
-                  </Table.Td>
-                  <Table.Td className="num">{fmtNum(c.qty, 3)}</Table.Td>
-                  <Table.Td className="num">{fmtNum(c.rate)}</Table.Td>
-                  <Table.Td />
-                  <Table.Td className="num">{fmtPkr(c.total)}</Table.Td>
-                  <Table.Td className="num" c="green">
-                    −{fmtPkr(c.total)}
-                  </Table.Td>
-                </Table.Tr>
+                <tr key={`r-${c.line}`}>
+                  <td>
+                    <RateTag tone="missing">removed</RateTag> {lineLabel(c.line)}
+                  </td>
+                  <td className="num">{fmtNum(c.qty, 3)}</td>
+                  <td className="num">{fmtNum(c.rate)}</td>
+                  <td />
+                  <td className="num">{fmtPkr(c.total)}</td>
+                  <td className="num delta-down">−{fmtPkr(c.total)}</td>
+                </tr>
               ))}
-            </Table.Tbody>
-          </Table>
+            </tbody>
+          </table>
         </div>
       )}
     </>
