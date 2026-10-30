@@ -63,7 +63,10 @@ Postgres 14+ is required. Dev credentials in `.env.example` (bom/bom). Never com
   prefers `bom`, falls back to `iflow:BS` then `iflow:NS`, flags rates older than 60 days as stale.
 - Wastage per cost head (Metal 20 %, Acrylic 20 %, Alucobond 10 %) applied to cost; misc = 10 % of total
   with wastage as one automatic line; USD = PKR/270 × 1.2, production = material / 0.6 (sheet's rules).
-- Roles (planned): admin, template_owner, bom_editor, inventory_manager, viewer. No auth yet.
+- Auth: JWT bearer (`POST /api/auth/login`, OAuth2 password form), argon2 hashes. Roles admin, template_owner,
+  bom_editor, inventory_manager, viewer; permissions in `app/services/auth.py::PERMISSIONS`, enforced with
+  `Depends(require("bom:write"))` etc. All `/api/*` routes need a user. Dev users: `scripts/create_user.py`.
+  First admin can be bootstrapped from `BOM_BOOTSTRAP_ADMIN_EMAIL/PASSWORD`. CORS from `BOM_CORS_ORIGINS`.
 
 ## Open items (state in the seeded data)
 
@@ -72,12 +75,12 @@ Postgres 14+ is required. Dev credentials in `.env.example` (bom/bom). Never com
 - 81 October orders have an Airtable sign type that maps to no `SignType` (23 distinct names).
 - 100 Odoo products share an iFlow id with another product; flagged in `Material.notes`.
 - 44 of 45 imported templates are drafts with flagged lines; only "Metal - With Backlit" is published.
-- iFlow vendor/API unknown; whether its export carries a rate field is unknown.
+- iFlow is built by an independent developer; an API can be requested later. Whether the export carries a rate field is unknown.
+- Suppliers seeded as names only (75, from the categorisation sheet); supplier rates must be entered by the team.
 
 ## Next
 
-1. Frontend: Create-BOM flow (order queue → parameter form → live lines → save) against `/api`.
+1. Frontend: login screen, then Create-BOM flow (order queue → parameter form → live lines → save) against `/api`.
 2. Template editor (port the prototype's Formulas tab UX) and publish/version flow.
 3. Airtable live sync + write-back (`app/seed/orders.py::map_airtable_record` is the field mapping).
 4. iFlow import endpoint + review queue for unmatched rows (`app/seed/rates_stock.py::import_stock_rows`).
-5. Auth and roles.

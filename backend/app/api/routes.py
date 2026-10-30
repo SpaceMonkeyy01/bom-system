@@ -7,10 +7,13 @@ from sqlalchemy.orm import Session, selectinload
 from app.api import schemas as S
 from app.db import get_session
 from app.models import BOM, Material, Order, SignType, Template
+from app.models import User
+from app.services.auth import current_user, require
 from app.services.bom import BOMRequest, ExtraLine, build_bom, save_bom
 from app.services.rates import RateResolver
 
-router = APIRouter()
+# every route needs a signed-in user; writes additionally need a permission
+router = APIRouter(dependencies=[Depends(current_user)])
 
 
 # ---------------------------------------------------------------- sign types / templates
@@ -145,7 +148,7 @@ def _req(body: S.BOMRequestIn) -> BOMRequest:
 
 
 @router.post("/boms/preview", response_model=S.BOMOut)
-def preview_bom(body: S.BOMRequestIn, db: Session = Depends(get_session)):
+def preview_bom(body: S.BOMRequestIn, _: User = Depends(require("bom:write")), db: Session = Depends(get_session)):
     try:
         bom = build_bom(db, _req(body))
     except ValueError as e:
@@ -157,7 +160,7 @@ def preview_bom(body: S.BOMRequestIn, db: Session = Depends(get_session)):
 
 
 @router.post("/boms", response_model=S.BOMOut, status_code=201)
-def create_bom(body: S.BOMRequestIn, db: Session = Depends(get_session)):
+def create_bom(body: S.BOMRequestIn, user: User = Depends(require("bom:write")), db: Session = Depends(get_session)):
     try:
         bom = build_bom(db, _req(body))
     except ValueError as e:
@@ -167,7 +170,7 @@ def create_bom(body: S.BOMRequestIn, db: Session = Depends(get_session)):
     errs = getattr(bom, "_input_errors", {})
     if errs:
         raise HTTPException(422, {"message": "Fix the inputs first", "input_errors": errs})
-    save_bom(db, bom)
+    save_bom(db, bom, user_id=user.id)
     db.commit()
     db.refresh(bom)
     return _bom_out(bom)
