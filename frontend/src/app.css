@@ -11,3 +11,51 @@ body {
 .app-main {
   padding: 12px 16px;
 }
+
+/* Dense tables: the BOM team reads 25-35 rows at a time. */
+.table-wrap {
+  background: var(--mantine-color-white);
+  border: 1px solid var(--mantine-color-gray-3);
+  border-radius: var(--mantine-radius-sm);
+  overflow-x: auto;
+}
+
+.dense-table {
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.dense-table th,
+.dense-table td {
+  padding: 2px 6px;
+  vertical-align: middle;
+}
+
+.dense-table th {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dense-table .num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.thumb {
+  border-radius: var(--mantine-radius-xs);
+  display: block;
+  object-fit: cover;
+}
+
+.thumb-empty {
+  background: var(--mantine-color-gray-2);
+}
