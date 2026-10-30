@@ -165,6 +165,20 @@ def _key(s: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", s.lower())
 
 
+PAINT_GRAM_FORMULA = re.compile(r"40\.49|\*\s*22\s*\*")  # g/ft² coverage constants from the paint recipes
+
+
+def _line_uom(ln: dict, mat, formula: str) -> str | None:
+    """Line unit. The paint recipes compute grams even though Odoo stocks paint in quarts/gallons/sets,
+    so those lines are Gram; everything else uses the sheet's UOM column or the material's unit."""
+    if formula and PAINT_GRAM_FORMULA.search(formula):
+        return "Gram"
+    hint = ln.get("uom_hint")
+    if not hint or str(hint).startswith("="):
+        return mat.uom.code if mat and mat.uom else None
+    return norm_uom(hint)
+
+
 def seed_sign_types_and_templates(db: Session, path=BOM_CHECK_XLSX) -> dict:
     wb = openpyxl.load_workbook(path, read_only=True, data_only=False)
     mapping, canonical = _sign_types_mapping(wb)
@@ -261,7 +275,7 @@ def seed_sign_types_and_templates(db: Session, path=BOM_CHECK_XLSX) -> dict:
                     material_name_hint=(mat.name if mat else (f"Odoo {ln['odoo_ref']}" if ln["odoo_ref"] else "(no material)")),
                     qty_formula=formula,
                     unit_cost_formula=uc if (uc and is_cost_formula(uc)) else None,
-                    uom=(mat.uom.code if mat and mat.uom else None) if (not ln["uom_hint"] or str(ln["uom_hint"]).startswith("=")) else norm_uom(ln["uom_hint"]),
+                    uom=_line_uom(ln, mat, formula),
                     usage=ln["usage"],
                     cost_tag=cost_tag,
                     work_centre=ln["work_centre"],

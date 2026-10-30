@@ -19,6 +19,9 @@ backend/
   app/services/bom.py     build_bom()/save_bom(): order + template + params → frozen, versioned BOM
   app/services/templates.py  draft/validate/preview/publish/diff for template versions
   app/services/auth.py    JWT, argon2, PERMISSIONS and require(); app/api/auth_routes.py
+  app/services/inventory.py  iFlow file import, review queue (link/create), add rates, merge materials
+  app/api/inventory_routes.py  /inventory/stock-imports, /inventory/review-queue, /materials/{id}/rates|merge,
+                           /rate-policies, /categories, /uoms, /suppliers
   app/api/                FastAPI routes + pydantic schemas (prefix /api)
   app/seed/               loaders from the spreadsheets in data/raw (idempotent): python -m app.seed.run
   scripts/regression_october.py  replays all 555 October sheet blocks through the engine (must stay 100%)
@@ -50,6 +53,9 @@ Postgres 14+ is required. Dev credentials in `.env.example` (bom/bom). Never com
 - Materials have app ids; external ids are `MaterialExternalKey(system, store, external_id)`. Never key on
   a bare iFlow id — BS and NS reuse numbers.
 - Rates are never overwritten (`MaterialRate` rows accumulate); BOM lines freeze rate, source and date.
+- Rates carry a UOM. The resolver prefers a rate in the template line's unit; a line whose only rate is in another
+  unit gets a `warning` (not an error). Paint lines are in Gram (the recipes compute grams) even though Odoo
+  stocks paint in quarts/gallons — never "fix" that by changing the line unit to the container.
 - Templates are versioned; publishing never mutates a saved BOM. Flagged lines (`ComponentLine.notes`)
   are the template owner's to-do list from the import.
 - Soft-delete only for anything a saved BOM references.
@@ -87,4 +93,6 @@ Postgres 14+ is required. Dev credentials in `.env.example` (bom/bom). Never com
    PUT /templates/{id}, POST /templates/validate, POST /templates/{id}/preview, POST /templates/{id}/publish,
    GET /templates/flagged (to-do list), GET /sign-types/unmapped + PATCH /sign-types/{id} (aliases re-map orders).
 3. Airtable live sync + write-back (`app/seed/orders.py::map_airtable_record` is the field mapping).
-4. iFlow import endpoint + review queue for unmatched rows (`app/seed/rates_stock.py::import_stock_rows`).
+4. Inventory UI: stock upload per store, review queue (suggestions → link / create), material detail with
+   rate history + add rate (bom/supplier), merge duplicates, rate policy settings.
+5. UOM conversions (e.g. quart → grams by density) so container-priced rates can serve gram lines.

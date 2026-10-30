@@ -82,6 +82,7 @@ class RateOut(BaseModel):
     source: str
     rate: float
     effective_from: str
+    uom: str | None = None
 
 
 class MaterialOut(ORMModel):
@@ -184,6 +185,8 @@ class BOMLineOut(ORMModel):
     total_pkr: float
     total_with_wastage_pkr: float
     error: str | None
+    warning: str | None = None
+    rate_uom: str | None = None
 
 
 class BOMOut(ORMModel):

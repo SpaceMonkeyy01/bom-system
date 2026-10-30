@@ -19,6 +19,8 @@ class ResolvedRate:
     effective_from: date | None
     stale: bool
     policy_scope: str  # global | category | material
+    uom: str | None = None  # the rate's UOM code
+    uom_mismatch: bool = False  # True when no rate exists in the requested UOM and another was used
 
 
 def _source_key(src: str) -> tuple[RateSource, str]:
@@ -62,7 +64,28 @@ class RateResolver:
             )
         return self._cache[material_id]
 
-    def resolve(self, material: Material) -> ResolvedRate:
+    def resolve(self, material: Material, uom_id: int | None = None) -> ResolvedRate:
+        """Pick a rate. When `uom_id` is given (the template line's unit), rates in that unit are preferred;
+        if none exists in any source, fall back to the policy order and flag the mismatch."""
+        if uom_id is not None:
+            r = self._resolve(material, lambda x: x.uom_id == uom_id)
+            if r.source != "none":
+                return r
+            r = self._resolve(material, lambda x: True)
+            if r.source != "none" and r.uom and self._uom_code(uom_id) != r.uom:
+                r.uom_mismatch = True
+            return r
+        return self._resolve(material, lambda x: True)
+
+    def _uom_code(self, uom_id: int | None) -> str | None:
+        if uom_id is None:
+            return None
+        from app.models import UOM
+
+        u = self.db.get(UOM, uom_id)
+        return u.code if u else None
+
+    def _resolve(self, material: Material, accept) -> ResolvedRate:
         policy, scope = self.policy_for(material)
         order: list[str] = []
         if policy:
@@ -71,7 +94,7 @@ class RateResolver:
         else:
             order = ["bom", "iflow:BS", "iflow:NS"]
         staleness = policy.staleness_days if policy else 60
-        rates = self.rates_for(material.id)
+        rates = [x for x in self.rates_for(material.id) if accept(x)]
         for src in order:
             source, qualifier = _source_key(src)
             if source == RateSource.supplier:
@@ -84,7 +107,7 @@ class RateResolver:
                     label = f"supplier:{r.supplier.name if r.supplier else r.supplier_id}"
                 else:
                     label = f"{r.source.value}:{r.store}" if r.store else r.source.value
-                return ResolvedRate(float(r.rate), label, r.effective_from, age > staleness, scope)
+                return ResolvedRate(float(r.rate), label, r.effective_from, age > staleness, scope, self._uom_code(r.uom_id))
         return ResolvedRate(0.0, "none", None, True, scope)
 
     @staticmethod
@@ -120,5 +143,5 @@ class RateResolver:
                 label = f"supplier:{r.supplier.name if r.supplier else r.supplier_id}"
             else:
                 label = f"{r.source.value}:{r.store}" if r.store else r.source.value
-            out.append({"source": label, "rate": float(r.rate), "effective_from": r.effective_from.isoformat()})
+            out.append({"source": label, "rate": float(r.rate), "effective_from": r.effective_from.isoformat(), "uom": self._uom_code(r.uom_id)})
         return out

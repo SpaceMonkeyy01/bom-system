@@ -109,6 +109,8 @@ class BOMLine(Base):
     total_pkr: Mapped[float] = mapped_column(Numeric(14, 2), default=0)
     total_with_wastage_pkr: Mapped[float] = mapped_column(Numeric(14, 2), default=0)
     error: Mapped[str | None] = mapped_column(String(255))
+    warning: Mapped[str | None] = mapped_column(String(255))  # non-blocking, e.g. rate in a different UOM
+    rate_uom: Mapped[str | None] = mapped_column(String(20))
 
     bom: Mapped[BOM] = relationship(back_populates="lines")
 

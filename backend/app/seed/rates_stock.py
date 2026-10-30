@@ -137,8 +137,9 @@ def import_stock_rows(
     }
     name_map: dict[str, Material] = {}
     for k in db.scalars(select(MaterialExternalKey).where(MaterialExternalKey.system == ExternalSystem.iflow, MaterialExternalKey.store == store)):
-        name_map.setdefault(loose_key(k.external_name or k.material.name), k.material)
-    for m in db.scalars(select(Material)):
+        if k.material.active:
+            name_map.setdefault(loose_key(k.external_name or k.material.name), k.material)
+    for m in db.scalars(select(Material).where(Material.active.is_(True))):  # never match a retired/merged material by name
         name_map.setdefault(loose_key(m.name), m)
 
     n = unmatched = 0

@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.engine.formula import LineSpec, ParamSpec, calculate, norm_tag, order_vars
-from app.models import BOM, BOMLine, CostHead, Order, Template
+from app.models import BOM, BOMLine, CostHead, Order, Template, UOM
 from app.services.rates import RateResolver
 
 MISC_PCT_DEFAULT = 10.0  # % of total-with-wastage, applied as one automatic line (prototype default)
@@ -107,7 +107,8 @@ def build_bom(db: Session, req: BOMRequest) -> BOM:
         if ln.unit_cost_formula:
             unit_cost = ln.unit_cost_formula
         elif ln.material is not None:
-            rr = resolver.resolve(ln.material)
+            line_uom = db.scalar(select(UOM.id).where(UOM.code == ln.uom)) if ln.uom else ln.material.uom_id
+            rr = resolver.resolve(ln.material, line_uom)
             resolved[ln.id] = rr
             unit_cost = rr.rate
         else:
@@ -175,6 +176,12 @@ def build_bom(db: Session, req: BOMRequest) -> BOM:
             total_pkr=round(total, 2),
             total_with_wastage_pkr=round(tww, 2),
             error=r.error,
+            rate_uom=rr.uom if rr else None,
+            warning=(
+                f"Rate is per {rr.uom} but the line is in {ln.uom or (ln.material.uom.code if ln.material and ln.material.uom else '?')}; check the unit"
+                if rr and rr.uom_mismatch
+                else ("No rate found for this material" if rr and rr.source == "none" else None)
+            ),
         )
         bom.lines.append(bl)
         seq += 1

@@ -74,13 +74,19 @@ def get_material(material_id: int, db: Session = Depends(get_session)):
         raise HTTPException(404, "Material not found")
     resolver = RateResolver(db)
     rr = resolver.resolve(m)
-    out = S.MaterialOut.model_validate(m)
-    out.category_path = m.category.path if m.category else None
-    out.uom = m.uom.code if m.uom else None
-    out.external_keys = [{"system": k.system.value, "store": k.store, "external_id": k.external_id, "external_name": k.external_name} for k in m.external_keys]
-    out.rates = [S.RateOut(**r) for r in resolver.all_rates(m)]
-    out.current_rate = S.RateOut(source=rr.source, rate=rr.rate, effective_from=rr.effective_from.isoformat() if rr.effective_from else "") if rr.source != "none" else None
-    return out
+    return S.MaterialOut(
+        id=m.id,
+        name=m.name,
+        category_path=m.category.path if m.category else None,
+        uom=m.uom.code if m.uom else None,
+        active=m.active,
+        review_status=m.review_status,
+        supplier=m.supplier,
+        brand=m.brand,
+        external_keys=[{"system": k.system.value, "store": k.store, "external_id": k.external_id, "external_name": k.external_name} for k in m.external_keys],
+        rates=[S.RateOut(**r) for r in resolver.all_rates(m)],
+        current_rate=S.RateOut(source=rr.source, rate=rr.rate, effective_from=rr.effective_from.isoformat() if rr.effective_from else "") if rr.source != "none" else None,
+    )
 
 
 # ---------------------------------------------------------------- orders
