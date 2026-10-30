@@ -18,6 +18,7 @@ from .core import (  # noqa: F401
     RatePolicy,
     StockLine,
     StockSnapshot,
+    Supplier,
     UOM,
     User,
 )

@@ -95,8 +95,9 @@ class Material(TimestampMixin, Base):
     category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id"))
     uom_id: Mapped[int | None] = mapped_column(ForeignKey("uoms.id"))
     product_type: Mapped[str] = mapped_column(String(30), default="Goods")
-    supplier: Mapped[str | None] = mapped_column(String(255))
+    supplier: Mapped[str | None] = mapped_column(String(255))  # legacy free text from the categorisation sheet
     supplier_city: Mapped[str | None] = mapped_column(String(120))
+    preferred_supplier_id: Mapped[int | None] = mapped_column(ForeignKey("suppliers.id"))
     brand: Mapped[str | None] = mapped_column(String(120))
     country_of_origin: Mapped[str | None] = mapped_column(String(120))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -149,7 +150,20 @@ class AttributeValue(Base):
 class RateSource(str, enum.Enum):
     bom = "bom"  # manually maintained BOM rate
     iflow = "iflow"  # derived from a stock import
+    supplier = "supplier"  # a quoted/invoiced price from a named supplier
     other = "other"
+
+
+class Supplier(TimestampMixin, Base):
+    """A vendor. A material can be bought from several suppliers at different rates."""
+
+    __tablename__ = "suppliers"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(160), unique=True)
+    city: Mapped[str | None] = mapped_column(String(120))
+    contact: Mapped[str | None] = mapped_column(String(255))
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    notes: Mapped[str | None] = mapped_column(Text)
 
 
 class StockSnapshot(Base):
@@ -200,11 +214,13 @@ class MaterialRate(Base):
     uom_id: Mapped[int | None] = mapped_column(ForeignKey("uoms.id"))
     effective_from: Mapped[date] = mapped_column(Date)
     snapshot_id: Mapped[int | None] = mapped_column(ForeignKey("stock_snapshots.id"))
+    supplier_id: Mapped[int | None] = mapped_column(ForeignKey("suppliers.id"), index=True)  # for source=supplier
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     note: Mapped[str | None] = mapped_column(String(255))
 
     material: Mapped[Material] = relationship(back_populates="rates")
+    supplier: Mapped[Supplier | None] = relationship()
     __table_args__ = (Index("ix_rate_material_source_eff", "material_id", "source", "effective_from"),)
 
 
@@ -216,8 +232,10 @@ class RatePolicy(Base):
     scope: Mapped[str] = mapped_column(String(10))  # global | category | material
     scope_id: Mapped[int | None] = mapped_column(Integer)
     preferred_source: Mapped[RateSource] = mapped_column(Enum(RateSource, name="rate_source", create_type=False))
-    fallback_order: Mapped[list[str]] = mapped_column(JSON, default=list)  # e.g. ["iflow:BS", "iflow:NS"]
+    fallback_order: Mapped[list[str]] = mapped_column(JSON, default=list)  # e.g. ["supplier:cheapest", "iflow:BS"]
     staleness_days: Mapped[int] = mapped_column(Integer, default=60)
+    # how to pick among supplier rates when source=supplier: "latest" | "cheapest" | a supplier id as string
+    supplier_rule: Mapped[str] = mapped_column(String(20), default="latest")
     __table_args__ = (UniqueConstraint("scope", "scope_id", name="uq_rate_policy_scope"),)
 
 

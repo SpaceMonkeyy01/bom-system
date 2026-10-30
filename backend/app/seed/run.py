@@ -8,13 +8,14 @@ import time
 
 from app.db import SessionLocal
 from app.seed.common import ensure_cost_heads, ensure_default_rate_policy, ensure_uoms
-from app.seed.materials import seed_materials
+from app.seed.materials import seed_materials, seed_suppliers
 from app.seed.orders import seed_orders
 from app.seed.rates_stock import seed_bom_rates, seed_stock
 from app.seed.templates import seed_sign_types_and_templates
 
 STEPS = {
     "materials": seed_materials,
+    "suppliers": seed_suppliers,
     "templates": seed_sign_types_and_templates,
     "rates": seed_bom_rates,
     "stock": seed_stock,

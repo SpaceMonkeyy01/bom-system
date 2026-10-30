@@ -197,3 +197,28 @@ def seed_materials(db: Session, path=CATEGORIZATION_XLSX) -> dict:
                 stats["attrs"] += 1
     db.flush()
     return stats
+
+
+def seed_suppliers(db: Session) -> dict:
+    """Create Supplier rows from the free-text supplier names on materials and link them as preferred supplier."""
+    from app.models import Supplier
+
+    existing = {s.name.lower(): s for s in db.scalars(select(Supplier))}
+    created = linked = 0
+    for m in db.scalars(select(Material).where(Material.supplier.isnot(None))):
+        for raw in str(m.supplier).split(","):
+            name = clean(raw)
+            if not name or len(name) < 2:
+                continue
+            s = existing.get(name.lower())
+            if not s:
+                s = Supplier(name=name, city=m.supplier_city)
+                db.add(s)
+                db.flush()
+                existing[name.lower()] = s
+                created += 1
+            if m.preferred_supplier_id is None:
+                m.preferred_supplier_id = s.id
+                linked += 1
+    db.flush()
+    return {"suppliers_created": created, "materials_linked": linked}

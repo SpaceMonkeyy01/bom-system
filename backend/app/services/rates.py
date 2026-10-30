@@ -22,6 +22,7 @@ class ResolvedRate:
 
 
 def _source_key(src: str) -> tuple[RateSource, str]:
+    """"bom" | "iflow:BS" | "supplier" | "supplier:cheapest" | "supplier:<id>" -> (source, qualifier)."""
     if ":" in src:
         a, b = src.split(":", 1)
         return RateSource(a), b
@@ -72,22 +73,52 @@ class RateResolver:
         staleness = policy.staleness_days if policy else 60
         rates = self.rates_for(material.id)
         for src in order:
-            source, store = _source_key(src)
-            for r in rates:  # newest first
-                if r.source == source and (not store or r.store == store):
-                    age = (self.as_of - r.effective_from).days
-                    label = f"{source.value}:{r.store}" if r.store else source.value
-                    return ResolvedRate(float(r.rate), label, r.effective_from, age > staleness, scope)
+            source, qualifier = _source_key(src)
+            if source == RateSource.supplier:
+                r = self._pick_supplier_rate(material, rates, qualifier or (policy.supplier_rule if policy else "latest"))
+            else:
+                r = next((x for x in rates if x.source == source and (not qualifier or x.store == qualifier)), None)
+            if r is not None:
+                age = (self.as_of - r.effective_from).days
+                if r.source == RateSource.supplier:
+                    label = f"supplier:{r.supplier.name if r.supplier else r.supplier_id}"
+                else:
+                    label = f"{r.source.value}:{r.store}" if r.store else r.source.value
+                return ResolvedRate(float(r.rate), label, r.effective_from, age > staleness, scope)
         return ResolvedRate(0.0, "none", None, True, scope)
+
+    @staticmethod
+    def _pick_supplier_rate(material: Material, rates: list[MaterialRate], rule: str) -> MaterialRate | None:
+        """rule: "latest" (newest across suppliers), "cheapest" (lowest among each supplier's latest),
+        "preferred" (material.preferred_supplier_id), or a supplier id."""
+        sup = [r for r in rates if r.source == RateSource.supplier]
+        if not sup:
+            return None
+        latest_per_supplier: dict[int | None, MaterialRate] = {}
+        for r in sup:  # rates are newest first
+            latest_per_supplier.setdefault(r.supplier_id, r)
+        if rule == "latest":
+            return sup[0]
+        if rule == "cheapest":
+            return min(latest_per_supplier.values(), key=lambda r: float(r.rate))
+        if rule == "preferred":
+            return latest_per_supplier.get(material.preferred_supplier_id) or sup[0]
+        if rule.isdigit():
+            return latest_per_supplier.get(int(rule))
+        return sup[0]
 
     def all_rates(self, material: Material) -> list[dict]:
         """Side-by-side view for the UI: latest rate per source/store."""
         seen: set[tuple] = set()
         out = []
         for r in self.rates_for(material.id):
-            k = (r.source.value, r.store)
+            k = ("supplier", r.supplier_id) if r.source == RateSource.supplier else (r.source.value, r.store)
             if k in seen:
                 continue
             seen.add(k)
-            out.append({"source": f"{r.source.value}:{r.store}" if r.store else r.source.value, "rate": float(r.rate), "effective_from": r.effective_from.isoformat()})
+            if r.source == RateSource.supplier:
+                label = f"supplier:{r.supplier.name if r.supplier else r.supplier_id}"
+            else:
+                label = f"{r.source.value}:{r.store}" if r.store else r.source.value
+            out.append({"source": label, "rate": float(r.rate), "effective_from": r.effective_from.isoformat()})
         return out
