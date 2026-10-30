@@ -1,20 +1,21 @@
-import { Alert, Anchor, Button, Center, Group, Loader, NumberInput, Paper, Select, Stack, Table, Text, TextInput } from '@mantine/core'
+import { Alert, Anchor, Badge, Button, Center, Group, List, Loader, NumberInput, Paper, Select, Stack, Table, Text, TextInput } from '@mantine/core'
 import { useDebouncedValue } from '@mantine/hooks'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useRef, useState } from 'react'
-import { Link, Navigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { api, errorMessage } from '../api/client'
 import type { Bom, MaterialSearchResult, Order, SignType, Template } from '../api/types'
 import { useAuth } from '../auth/AuthProvider'
 import { AddMaterial } from '../components/AddMaterial'
 import { BomLinesTable } from '../components/BomLinesTable'
 import { OrderFacts } from '../components/OrderFacts'
+import { PageError, PageLoader } from '../components/PageState'
 import { ParameterForm } from '../components/ParameterForm'
 import { QtyInput } from '../components/QtyInput'
 import { TemplatePicker } from '../components/TemplatePicker'
 import { TotalsPanel } from '../components/TotalsPanel'
-import { type BomDraft, buildRequest, buildRows, type DraftExtra, type LineRow, type ParamValue } from '../lib/bom'
-import { fmtPkr } from '../lib/format'
+import { type BomDraft, buildRequest, buildRows, type DraftExtra, isUnpriced, type LineRow, missingRequired, type ParamValue, rateWarning } from '../lib/bom'
+import { fmtPkr, fmtUsd } from '../lib/format'
 
 const PREVIEW_DEBOUNCE_MS = 300
 const BAR_HEIGHT = 46
@@ -29,6 +30,8 @@ export function CreateBomPage() {
 }
 
 function CreateBom({ orderId }: { orderId: number }) {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const order = useQuery({
     queryKey: ['order', orderId],
     queryFn: ({ signal }) => api<Order>(`/orders/${orderId}`, { signal }),
@@ -99,6 +102,22 @@ function CreateBom({ orderId }: { orderId: number }) {
     return [...names].sort()
   }, [bom, extras])
 
+  const save = useMutation({
+    mutationFn: () =>
+      api<Bom>('/boms', {
+        json: {
+          ...buildRequest(draft!),
+          box_dimension: boxDimension.trim() || null,
+          est_shipment_cost_usd: shipmentUsd === '' ? null : Number(shipmentUsd),
+        },
+      }),
+    onSuccess: (saved) => {
+      // The order leaves the queue and its version list and dashboard counts have changed.
+      for (const key of ['orders', 'order', 'order-boms', 'dashboard']) queryClient.invalidateQueries({ queryKey: [key] })
+      navigate(`/boms/${saved.id}`, { state: { justSaved: true } })
+    },
+  })
+
   function chooseTemplate(id: number | null) {
     setPickedTemplateId(id)
     // Overrides are keyed by the old template's line ids, and its inputs don't apply to the new one.
@@ -122,27 +141,26 @@ function CreateBom({ orderId }: { orderId: number }) {
     setExtras((prev) => prev.map((e) => (e.key === key ? { ...e, ...change } : e)))
   }
 
-  if (order.isPending || signTypes.isPending) {
-    return (
-      <Center p="xl">
-        <Loader />
-      </Center>
-    )
-  }
-  if (order.isError || signTypes.isError) {
-    return (
-      <Alert color="red" title="Couldn’t load this order">
-        <Text size="sm" mb="xs">
-          {errorMessage(order.error ?? signTypes.error)}
-        </Text>
-        <Anchor component={Link} to="/" size="sm">
-          Back to the queue
-        </Anchor>
-      </Alert>
-    )
-  }
+  if (order.isPending || signTypes.isPending) return <PageLoader />
+  if (order.isError || signTypes.isError) return <PageError title="Couldn’t load this order" error={order.error ?? signTypes.error} />
 
   const updating = draft !== debounced || preview.isFetching
+
+  const lines = bom?.lines ?? []
+  const errorLines = lines.filter((l) => l.error).length
+  const inputErrors = Object.keys(bom?.input_errors ?? {})
+  const missing = template.data ? missingRequired(template.data.parameters, values) : []
+  const blockers = [
+    ...(missing.length ? [`Fill in ${missing.map((p) => p.label).join(', ')}.`] : []),
+    ...(inputErrors.length ? [`Fix ${inputErrors.join(', ')}: ${Object.values(bom!.input_errors).join('; ')}.`] : []),
+    ...(errorLines ? [`${errorLines} line${errorLines === 1 ? ' has' : 's have'} a formula error. The template needs fixing before this can be saved.`] : []),
+  ]
+  // Never save a figure nobody has seen: wait until the preview matches what's on screen.
+  const canSave = !!bom && !updating && !preview.isError && blockers.length === 0 && !save.isPending
+
+  const unpriced = lines.filter(isUnpriced).length
+  const stale = lines.filter((l) => l.rate_stale && l.rate_source !== 'none' && l.qty_final > 0).length
+  const mismatched = lines.filter(rateWarning).length
 
   const renderQty = (row: LineRow) => {
     const { line, extraKey } = row
@@ -239,12 +257,52 @@ function CreateBom({ orderId }: { orderId: number }) {
       <section className="bom-main">
         <Paper withBorder className="bom-bar" style={{ minHeight: BAR_HEIGHT }}>
           <Group gap="lg" wrap="nowrap">
-            <Text size="sm" fw={700}>
+            <Text size="sm" fw={700} className="nowrap">
               {bom ? `PKR ${fmtPkr(bom.grand_total_pkr)}` : '—'}
             </Text>
+            {bom && (
+              <Text size="xs" c="dimmed" className="nowrap" visibleFrom="sm">
+                Material {fmtUsd(bom.material_cost_usd)} · Production {fmtUsd(bom.production_cost_usd)}
+              </Text>
+            )}
             {updating && templateId !== null && <Loader size={14} aria-label="Updating" />}
           </Group>
+          <Group gap={6} wrap="nowrap">
+            {unpriced > 0 && (
+              <Badge size="sm" color="red" variant="light" tt="none">
+                {unpriced} no rate
+              </Badge>
+            )}
+            {mismatched > 0 && (
+              <Badge size="sm" color="orange" variant="light" tt="none">
+                {mismatched} unit mismatch
+              </Badge>
+            )}
+            {stale > 0 && (
+              <Badge size="sm" color="orange" variant="light" tt="none">
+                {stale} stale
+              </Badge>
+            )}
+            <Button size="xs" disabled={!canSave} loading={save.isPending} onClick={() => save.mutate()}>
+              Save BOM
+            </Button>
+          </Group>
         </Paper>
+
+        {save.isError && (
+          <Alert color="red" title="Couldn’t save this BOM" mt={6} mb={6}>
+            <Text size="sm">{errorMessage(save.error)}</Text>
+          </Alert>
+        )}
+        {bom && blockers.length > 0 && (
+          <Alert color="red" p="xs" mt={6} mb={6} title={<Text size="xs" fw={600}>Can’t save yet</Text>}>
+            <List size="xs">
+              {blockers.map((reason) => (
+                <List.Item key={reason}>{reason}</List.Item>
+              ))}
+            </List>
+          </Alert>
+        )}
 
         {templateId === null ? (
           <Paper withBorder p="xl">

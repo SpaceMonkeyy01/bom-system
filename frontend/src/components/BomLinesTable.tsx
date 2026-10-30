@@ -1,6 +1,6 @@
 import { Group, Switch, Table, Text, Tooltip } from '@mantine/core'
 import { type ReactNode, useState } from 'react'
-import { isHideable, type LineRow, rateWarning } from '../lib/bom'
+import { isEdited, isHideable, type LineRow, rateWarning } from '../lib/bom'
 import { fmtNum, fmtPkr } from '../lib/format'
 import { RateBadge } from './RateBadge'
 
@@ -90,11 +90,10 @@ export function BomLinesTable({ rows, renderQty, renderCostHead, renderActions, 
 
 function FrozenQty({ row }: { row: LineRow }) {
   const { qty_final: qty, qty_auto: auto, qty_formula: formula } = row.line
-  const edited = auto !== null && auto !== qty
   return (
     <>
       {fmtNum(qty, 3)}
-      {edited && (
+      {isEdited(row.line) && (
         <Tooltip label={`Edited. Formula ${formula ?? ''} gave ${fmtNum(auto, 3)}`} withinPortal>
           <span className="qty-edited" aria-label="Edited quantity">
             ✎

@@ -110,6 +110,17 @@ export function buildRows(
   return rows
 }
 
+/** True when a saved line's quantity differs from what its formula gave. */
+export const isEdited = (line: BomLine) => line.qty_auto !== null && Math.abs(line.qty_auto - line.qty_final) > 1e-6
+
+/** Rows for a saved BOM. Added lines are always shown, even at zero: someone put them there on purpose. */
+export const frozenRows = (lines: BomLine[]): LineRow[] =>
+  lines.map((line, i) => ({
+    key: `saved-${line.id ?? i}`,
+    line,
+    overridden: isEdited(line) || line.component_line_id === null,
+  }))
+
 /** Zero-quantity lines are hidden by default, but never ones that need attention or that someone edited. */
 export function isHideable(row: LineRow): boolean {
   return row.line.qty_final === 0 && !row.line.error && !row.overridden && !row.extraKey

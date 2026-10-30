@@ -106,7 +106,7 @@ export function QueuePage() {
                       {o.code}
                     </Anchor>
                     {o.bom_count > 0 && (
-                      <Badge ml={6} size="xs" variant="light" color="green">
+                      <Badge ml={6} size="xs" variant="light" color="green" tt="none">
                         v{o.bom_count}
                       </Badge>
                     )}

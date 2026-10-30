@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { BomLine, ComponentLine, Parameter } from '../api/types'
-import { buildRequest, buildRows, type DraftExtra, isHideable, isUnpriced, missingRequired, parseQty, qtyText, rateWarning } from './bom'
+import { buildRequest, buildRows, type DraftExtra, frozenRows, isEdited, isHideable, isUnpriced, missingRequired, parseQty, qtyText, rateWarning } from './bom'
 
 function line(over: Partial<BomLine> = {}): BomLine {
   return {
@@ -121,6 +121,23 @@ describe('isUnpriced', () => {
     expect(isUnpriced(line({ rate_source: 'none', qty_final: 0 }))).toBe(false)
     expect(isUnpriced(line({ rate_source: 'bom', qty_final: 2 }))).toBe(false)
     expect(isUnpriced(line({ rate_source: 'none', qty_final: 2, error: 'bad' }))).toBe(false)
+  })
+})
+
+describe('saved BOMs', () => {
+  it('spots edited quantities, allowing for float noise', () => {
+    expect(isEdited(line({ qty_auto: 5, qty_final: 7 }))).toBe(true)
+    expect(isEdited(line({ qty_auto: 9.6, qty_final: 9.600000000000001 }))).toBe(false)
+    expect(isEdited(line({ qty_auto: null, qty_final: 7 }))).toBe(false)
+  })
+
+  it('keeps edited-to-zero and added lines visible but hides plain zero lines', () => {
+    const rows = frozenRows([
+      line({ id: 1, qty_auto: 0, qty_final: 0 }),
+      line({ id: 2, qty_auto: 5, qty_final: 0 }),
+      line({ id: 3, component_line_id: null, qty_auto: null, qty_final: 0 }),
+    ])
+    expect(rows.map(isHideable)).toEqual([true, false, false])
   })
 })
 
