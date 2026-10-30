@@ -6,6 +6,7 @@ import type { Bom, Order } from '../api/types'
 import { useAuth } from '../auth/AuthProvider'
 import { OrderFacts } from '../components/OrderFacts'
 import { PageError, PageLoader } from '../components/PageState'
+import { isImported } from '../lib/bom'
 import { fmtDate, fmtPkr, fmtUsd } from '../lib/format'
 
 /** An order and its saved BOMs. This is where read-only roles land, and where a new version starts from. */
@@ -79,7 +80,7 @@ export function OrderPage() {
                         {b.status}
                       </Badge>
                     </Table.Td>
-                    <Table.Td>{fmtDate(b.saved_at)}</Table.Td>
+                    <Table.Td>{isImported(b) ? 'From the old sheet' : fmtDate(b.saved_at)}</Table.Td>
                     <Table.Td className="num">{fmtPkr(b.grand_total_pkr)}</Table.Td>
                     <Table.Td className="num">{fmtUsd(b.material_cost_usd)}</Table.Td>
                     <Table.Td className="num">{fmtUsd(b.production_cost_usd)}</Table.Td>

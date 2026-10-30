@@ -1,4 +1,4 @@
-import type { BomLine, BomRequest, ComponentLine, Parameter } from '../api/types'
+import type { Bom, BomLine, BomRequest, ComponentLine, Parameter } from '../api/types'
 
 export type ParamValue = string | number
 
@@ -113,12 +113,17 @@ export function buildRows(
 /** True when a saved line's quantity differs from what its formula gave. */
 export const isEdited = (line: BomLine) => line.qty_auto !== null && Math.abs(line.qty_auto - line.qty_final) > 1e-6
 
-/** Rows for a saved BOM. Added lines are always shown, even at zero: someone put them there on purpose. */
-export const frozenRows = (lines: BomLine[]): LineRow[] =>
-  lines.map((line, i) => ({
+export const isImported = (bom: Pick<Bom, 'status'>) => bom.status === 'imported'
+
+/**
+ * Rows for a saved BOM. Added lines are always shown, even at zero: someone put them there on purpose. On a BOM
+ * imported from the old sheet no line has a template line, so that doesn't mean it was added.
+ */
+export const frozenRows = (bom: Pick<Bom, 'lines' | 'status'>): LineRow[] =>
+  bom.lines.map((line, i) => ({
     key: `saved-${line.id ?? i}`,
     line,
-    overridden: isEdited(line) || line.component_line_id === null,
+    overridden: isEdited(line) || (line.component_line_id === null && !isImported(bom)),
   }))
 
 /** Zero-quantity lines are hidden by default, but never ones that need attention or that someone edited. */
@@ -127,11 +132,11 @@ export function isHideable(row: LineRow): boolean {
 }
 
 /** A blank required input counts as 0 in the engine, so it would save a wrong BOM without any error. */
-export function missingRequired(parameters: Parameter[], values: Record<string, ParamValue | undefined>): Parameter[] {
+export function missingRequired(parameters: Parameter[], values: Record<string, ParamValue | null | undefined>): Parameter[] {
   return parameters.filter((p) => {
     if (!p.required) return false
     const value = values[p.param_name]
-    return value === undefined || value === ''
+    return value === undefined || value === null || value === ''
   })
 }
 

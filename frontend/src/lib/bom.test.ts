@@ -112,6 +112,7 @@ describe('missingRequired', () => {
     const params = [p('A', true), p('B', true), p('C', false), p('D', true)]
     expect(missingRequired(params, { A: '', B: 0, D: 3 }).map((x) => x.param_name)).toEqual(['A'])
     expect(missingRequired([p('A', true)], {}).length).toBe(1)
+    expect(missingRequired([p('A', true)], { A: null }).length).toBe(1)
   })
 })
 
@@ -132,12 +133,23 @@ describe('saved BOMs', () => {
   })
 
   it('keeps edited-to-zero and added lines visible but hides plain zero lines', () => {
-    const rows = frozenRows([
-      line({ id: 1, qty_auto: 0, qty_final: 0 }),
-      line({ id: 2, qty_auto: 5, qty_final: 0 }),
-      line({ id: 3, component_line_id: null, qty_auto: null, qty_final: 0 }),
-    ])
+    const rows = frozenRows({
+      status: 'saved',
+      lines: [
+        line({ id: 1, qty_auto: 0, qty_final: 0 }),
+        line({ id: 2, qty_auto: 5, qty_final: 0 }),
+        line({ id: 3, component_line_id: null, qty_auto: null, qty_final: 0 }),
+      ],
+    })
     expect(rows.map(isHideable)).toEqual([true, false, false])
+  })
+
+  it('hides zero lines on imported BOMs, where no line has a template line', () => {
+    const rows = frozenRows({
+      status: 'imported',
+      lines: [line({ id: 1, component_line_id: null, qty_auto: 0, qty_final: 0 }), line({ id: 2, component_line_id: null, qty_auto: 3, qty_final: 3 })],
+    })
+    expect(rows.map(isHideable)).toEqual([true, false])
   })
 })
 

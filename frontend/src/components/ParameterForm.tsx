@@ -4,7 +4,7 @@ import type { ParamValue } from '../lib/bom'
 
 interface Props {
   parameters: Parameter[]
-  values: Record<string, ParamValue | undefined>
+  values: Record<string, ParamValue | null | undefined>
   /** Names the user has entered themselves. Any other value is the template's default. */
   entered: Record<string, ParamValue>
   errors: Record<string, string>

@@ -186,7 +186,7 @@ export interface Bom {
   version: number
   status: string
   template_id: number | null
-  parameters: Record<string, string | number>
+  parameters: Record<string, string | number | null>
   area_sqft: number | null
   base_total_pkr: number
   wastage_total_pkr: number

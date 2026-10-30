@@ -9,7 +9,7 @@ import { BomLinesTable } from '../components/BomLinesTable'
 import { OrderFacts } from '../components/OrderFacts'
 import { PageError, PageLoader } from '../components/PageState'
 import { TotalsPanel } from '../components/TotalsPanel'
-import { frozenRows } from '../lib/bom'
+import { frozenRows, isImported } from '../lib/bom'
 import { fmtDate, fmtUsd } from '../lib/format'
 
 const BAR_HEIGHT = 46
@@ -54,7 +54,7 @@ function BomDetail({ bomId }: { bomId: number }) {
     enabled: templateId !== undefined && templateId !== null,
   })
 
-  const rows = useMemo(() => frozenRows(bom.data?.lines ?? []), [bom.data])
+  const rows = useMemo(() => (bom.data ? frozenRows(bom.data) : []), [bom.data])
 
   if (bom.isPending) return <PageLoader />
   if (bom.isError) return <PageError title="Couldn’t load this BOM" error={bom.error} />
@@ -79,10 +79,10 @@ function BomDetail({ bomId }: { bomId: number }) {
                 return (
                   <div className="fact" key={name}>
                     <Text span size="xs" c="dimmed">
-                      {info?.label ?? name}
+                      {info?.label ?? name.replace(/_/g, ' ')}
                     </Text>
                     <Text span size="xs" fw={500}>
-                      {value === '' ? '—' : `${value}${info?.uom ? ` ${info.uom}` : ''}`}
+                      {value === null || value === '' ? '—' : `${value}${info?.uom ? ` ${info.uom}` : ''}`}
                     </Text>
                   </div>
                 )
@@ -105,7 +105,8 @@ function BomDetail({ bomId }: { bomId: number }) {
               {saved.status}
             </Badge>
             <Text size="xs" c="dimmed" className="nowrap" visibleFrom="sm">
-              Saved {fmtDate(saved.saved_at)}
+              {/* imported dates are unreliable for now (API_REQUESTS.md #4) */}
+              {isImported(saved) ? 'From the old sheet' : `Saved ${fmtDate(saved.saved_at)}`}
             </Text>
           </Group>
           <Group gap={4} wrap="nowrap">
