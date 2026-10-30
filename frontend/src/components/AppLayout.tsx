@@ -39,6 +39,11 @@ export function AppLayout() {
       <main className="app-main">
         <Outlet />
       </main>
+      <footer className="app-footer">
+        <Text size="xs" c="dimmed">
+          MVP v1.0 by Saad
+        </Text>
+      </footer>
     </>
   )
 }
