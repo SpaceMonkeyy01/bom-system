@@ -86,3 +86,4 @@ class ComponentLine(Base):
     notes: Mapped[str | None] = mapped_column(String(255))
 
     template: Mapped[Template] = relationship(back_populates="lines")
+    material = relationship("Material")
