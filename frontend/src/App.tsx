@@ -1,17 +1,21 @@
-import { Center, Text } from '@mantine/core'
-import { Route, Routes } from 'react-router-dom'
+import { Text } from '@mantine/core'
+import { Navigate, Route, Routes } from 'react-router-dom'
+import { AuthProvider, RequireAuth } from './auth/AuthProvider'
+import { AppLayout } from './components/AppLayout'
+import { LoginPage } from './pages/LoginPage'
 
 export function App() {
   return (
-    <Routes>
-      <Route
-        path="*"
-        element={
-          <Center h="100vh">
-            <Text>BOM System</Text>
-          </Center>
-        }
-      />
-    </Routes>
+    <AuthProvider>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route element={<RequireAuth />}>
+          <Route element={<AppLayout />}>
+            <Route path="/" element={<Text>Order queue</Text>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Route>
+      </Routes>
+    </AuthProvider>
   )
 }

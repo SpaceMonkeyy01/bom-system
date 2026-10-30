@@ -53,9 +53,13 @@ describe('api', () => {
   it('on 401 clears the token and redirects to login, keeping the current page', async () => {
     setToken('expired')
     respond(401, { detail: 'Session expired, sign in again' })
-    await expect(api('/orders')).rejects.toBeInstanceOf(ApiError)
+    const settled = vi.fn()
+    api('/orders').then(settled, settled)
+    await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/login?next=%2Forders%2F5%2Fbom%3Fa%3D1'))
     expect(getToken()).toBeNull()
-    expect(assign).toHaveBeenCalledWith('/login?next=%2Forders%2F5%2Fbom%3Fa%3D1')
+    // stays pending: the page is unloading, so callers must not render an error or redirect again
+    await new Promise((r) => setTimeout(r, 0))
+    expect(settled).not.toHaveBeenCalled()
   })
 
   it('does not redirect on a login 401 (wrong password)', async () => {

@@ -47,10 +47,12 @@ export function safeNext(next: string | null | undefined): string {
   return next
 }
 
-function redirectToLogin() {
+/** Returns false when already on /login, so the caller can report the error instead. */
+function redirectToLogin(): boolean {
   const { pathname, search } = window.location
-  if (pathname === '/login') return
+  if (pathname === '/login') return false
   window.location.assign(`/login?next=${encodeURIComponent(pathname + search)}`)
+  return true
 }
 
 export interface RequestOptions {
@@ -91,7 +93,8 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
 
   if (res.status === 401 && !skipAuthRedirect) {
     clearToken()
-    redirectToLogin()
+    // The page is about to unload: stay pending so nothing re-renders into an error or a second redirect.
+    if (redirectToLogin()) return new Promise<T>(() => {})
   }
   if (!res.ok) {
     const data = await res.json().catch(() => null)
