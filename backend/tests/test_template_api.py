@@ -76,6 +76,16 @@ def test_draft_edit_publish_cycle(owner):
     assert client.put(f"/api/templates/{d['id']}", json=body, headers=h).json()["problems"] == []
     prev = client.post(f"/api/templates/{d['id']}/preview", json={"parameters": {"Crunched_Area_SS_ft2": 2}}, headers=h)
     assert prev.status_code == 200 and prev.json()["lines"][0]["qty_final"] == pytest.approx(2 * factor)
+    # unsaved edits preview without touching the stored draft, and a viewer may preview too
+    live = dict(body)
+    live["lines"] = [dict(body["lines"][0], qty_formula="Crunched_Area_SS_ft2 * 10"), *body["lines"][1:]]
+    vh = _login("viewer@example.com", "viewer-dev-pass")
+    prev = client.post(f"/api/templates/{d['id']}/preview", json={"parameters": {"Crunched_Area_SS_ft2": 2}, "draft": live}, headers=vh)
+    assert prev.status_code == 200, prev.text
+    assert prev.json()["lines"][0]["qty_final"] == pytest.approx(20) and prev.json()["lines"][0]["material_name"] == d["lines"][0]["material_name"]
+    stored = client.get(f"/api/templates/{d['id']}", headers=h).json()
+    assert stored["lines"][0]["qty_formula"] == f"Crunched_Area_SS_ft2 * {factor}"  # untouched
+    assert len(stored["lines"]) == len(d["lines"])
 
     r = client.post(f"/api/templates/{d['id']}/publish", headers=h)
     assert r.status_code == 200 and r.json()["status"] == "published"
@@ -86,6 +96,7 @@ def test_draft_edit_publish_cycle(owner):
     db.close()
     diff = client.get(f"/api/templates/{pub_before}/diff/{d['id']}", headers=h).json()
     assert diff["lines_changed"] and not diff["lines_added"]
+    assert diff["lines_changed"][0].split("|")[0] == d["lines"][0]["material_name"]  # keyed by name, not id
 
 
 def test_viewer_cannot_edit_templates(owner):

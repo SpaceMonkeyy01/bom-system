@@ -5,32 +5,6 @@ Nothing here is blocking; no screen uses mock data.
 
 ## TODO
 
-### 1. `POST /templates/{id}/preview` should accept the draft body, and be readable
-
-The preview runs the template as stored, so the editor has to save before the preview reflects an edit. A truly
-live preview needs the endpoint to take `{parameters, lines}` like `/templates/validate` does (or a
-`POST /templates/preview` sibling). It also requires `template:write`, so viewers get a 403 and the editor hides the
-panel for them, although a read-only look at what a published template produces would be useful to anyone.
-
-- **For now:** the panel is labelled "shows the saved draft — save to refresh"; Ctrl/Cmd+S saves. Hidden for roles
-  without `template:write`.
-
-### 2. Template diff keys should carry the material name
-
-`template_diff` keys lines by `material_name_hint or material_id`, and the hint is empty for materials matched at
-import, so the versions page lists changes as "1 · Front Face" (a material id) or "(no material)".
-
-- **Asked:** key by the resolved material name (and keep the id to disambiguate).
-- **For now:** shown as returned.
-
-### 3. `GET /templates/flagged`: `material` is the hint only
-
-For a flagged line whose material did resolve, `material` comes back `null` (it reads `material_name_hint`), so the
-to-do list shows "?" for it.
-
-- **Asked:** fall back to the material's name.
-- **For now:** "?".
-
 ### 4. Decide which statuses need no BOM
 
 Cancelled orders are excluded now. Of the orders left in the queue, several have a `Check profit, Decision Pending`
@@ -50,3 +24,10 @@ status; whether those should be costed before the decision is for the BOM team.
 - Template editor API (`/templates/drafts`, `PUT /templates/{id}`, `/validate`, `/publish`, `/preview`, `/flagged`,
   `/sign-types/unmapped`, `PATCH /sign-types/{id}`) and BOM recalculation (`/boms/{id}/rate-changes`,
   `/recalculate`, `/recalculate/save`) are wired up in the UI.
+- `POST /templates/{id}/preview` takes an optional `draft` (same shape as `PUT /templates/{id}`) and previews that
+  instead of the stored template — nothing is written, so the editor can call it on every edit (debounced like
+  `/validate`). It no longer needs `template:write`; any user can preview. Lines from an unsaved draft come back with
+  `component_line_id: null`.
+- `GET /templates/{a}/diff/{b}` keys lines as `"<material name>|<usage>|<seq>"` (resolved name, falling back to the
+  hint, then "(no material)").
+- `GET /templates/flagged` returns the resolved material name in `material` (hint as fallback) plus `material_id`.

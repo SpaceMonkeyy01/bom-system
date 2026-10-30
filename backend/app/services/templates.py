@@ -155,6 +155,38 @@ def replace_draft_content(db: Session, t: Template, params: list[ParamIn], lines
     return probs
 
 
+def transient_template(db: Session, base: Template, params: list[ParamIn], lines: list[LineIn]) -> Template:
+    """Build the editor's unsaved state as an in-memory Template for preview. Nothing here is added to the
+    session: relationships to persistent rows are set by id only, so no cascade can save it by accident."""
+    t = Template(sign_type_id=base.sign_type_id, version=base.version, status="preview", source="unsaved editor state")
+    t.id = None
+    t.parameters = [
+        Parameter(seq=i, label=p.label, param_name=p.param_name.strip(), uom=p.uom, input_type=p.input_type, options=p.options or [], default_value=p.default_value, default_from_order=p.default_from_order, required=p.required)
+        for i, p in enumerate(params)
+    ]
+    out = []
+    for i, ln in enumerate(lines):
+        m = db.get(Material, ln.material_id) if ln.material_id else None
+        c = ComponentLine(
+            seq=i,
+            material_id=m.id if m else None,
+            material_name_hint=m.name if m else ln.material_name_hint,
+            qty_formula=ln.qty_formula.strip() or "0",
+            unit_cost_formula=(ln.unit_cost_formula or "").strip() or None,
+            uom=ln.uom or (m.uom.code if m and m.uom else None),
+            usage=ln.usage,
+            cost_tag=ln.cost_tag,
+            work_centre=ln.work_centre,
+            wastage_pct=ln.wastage_pct,
+            optional=ln.optional,
+        )
+        c.id = -(i + 1)  # distinct keys for the engine; negative so nothing mistakes them for saved lines
+        c.material = m
+        out.append(c)
+    t.lines = out
+    return t
+
+
 def publish(db: Session, t: Template, user_id: int | None) -> None:
     if t.status != "draft":
         raise ValueError("Only a draft can be published")
@@ -203,7 +235,8 @@ def template_diff(a: Template, b: Template) -> dict[str, Any]:
     def lmap(t):
         out = {}
         for ln in t.lines:
-            key = f"{ln.material_name_hint or ln.material_id}|{ln.usage or ''}|{ln.seq}"
+            name = (ln.material.name if ln.material is not None else None) or ln.material_name_hint or "(no material)"
+            key = f"{name}|{ln.usage or ''}|{ln.seq}"
             out[key] = (ln.qty_formula, ln.unit_cost_formula, ln.cost_tag, ln.work_centre, float(ln.wastage_pct) if ln.wastage_pct is not None else None)
         return out
 

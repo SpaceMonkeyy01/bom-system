@@ -12,10 +12,10 @@ from sqlalchemy.orm import Session, selectinload
 from app.api import schemas as S
 from app.api.routes import _bom_out, get_template
 from app.db import get_session
-from app.models import Order, SignType, Template, User
+from app.models import ComponentLine, Order, SignType, Template, User
 from app.services.auth import current_user, require
 from app.services.bom import BOMRequest, build_bom
-from app.services.templates import LineIn, ParamIn, discard_draft, new_draft, publish, replace_draft_content, sample_order_for, template_diff, validate_template
+from app.services.templates import LineIn, ParamIn, discard_draft, new_draft, publish, replace_draft_content, sample_order_for, template_diff, transient_template, validate_template
 
 router = APIRouter(dependencies=[Depends(current_user)])
 
@@ -71,6 +71,7 @@ class SignTypeBody(BaseModel):
 class PreviewBody(BaseModel):
     order_id: int | None = None  # default: most recent order of this sign type
     parameters: dict[str, Any] = Field(default_factory=dict)
+    draft: DraftBody | None = None  # unsaved editor state; when present it is previewed instead of the stored template
 
 
 def _ins(body: DraftBody):
@@ -134,15 +135,24 @@ def delete_draft(template_id: int, _: User = Depends(require("template:write")),
 
 
 @router.post("/templates/{template_id}/preview", response_model=S.BOMOut)
-def preview_template(template_id: int, body: PreviewBody, _: User = Depends(require("template:write")), db: Session = Depends(get_session)):
-    """Run the template (draft or published) against a real order so the editor shows live numbers."""
+def preview_template(template_id: int, body: PreviewBody, db: Session = Depends(get_session)):
+    """Run the template against a real order so the editor shows live numbers. Pass `draft` (same shape as
+    PUT /templates/{id}) to preview unsaved edits; nothing is written either way, so any user may call it."""
     t = db.get(Template, template_id)
     if not t:
         raise HTTPException(404, "Template not found")
     order = db.get(Order, body.order_id) if body.order_id else sample_order_for(db, t)
     if not order:
         raise HTTPException(400, "No order to preview against; pass order_id")
-    bom = build_bom(db, BOMRequest(order_id=order.id, template_id=t.id, parameters=body.parameters))
+    live = None
+    if body.draft is not None:
+        p, ln = _ins(body.draft)
+        live = transient_template(db, t, p, ln)
+    try:
+        bom = build_bom(db, BOMRequest(order_id=order.id, template_id=t.id, template=live, parameters=body.parameters))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    db.rollback()  # belt and braces: the preview must never leave anything behind
     bom.order = order
     out = _bom_out(bom)
     db.expunge_all()
@@ -161,8 +171,8 @@ def diff(a_id: int, b_id: int, db: Session = Depends(get_session)):
 def flagged_lines(db: Session = Depends(get_session)):
     """The template owner's to-do list: every line the import flagged, grouped by template."""
     out = []
-    for t in db.scalars(select(Template).options(selectinload(Template.lines), selectinload(Template.sign_type)).order_by(Template.sign_type_id, Template.version)):
-        bad = [{"line_id": ln.id, "seq": ln.seq, "material": ln.material_name_hint, "formula": ln.qty_formula, "problem": ln.notes} for ln in t.lines if ln.notes]
+    for t in db.scalars(select(Template).options(selectinload(Template.lines).selectinload(ComponentLine.material), selectinload(Template.sign_type)).order_by(Template.sign_type_id, Template.version)):
+        bad = [{"line_id": ln.id, "seq": ln.seq, "material_id": ln.material_id, "material": (ln.material.name if ln.material is not None else None) or ln.material_name_hint, "formula": ln.qty_formula, "problem": ln.notes} for ln in t.lines if ln.notes]
         if bad:
             out.append({"template_id": t.id, "sign_type": t.sign_type.name, "version": t.version, "status": t.status, "flagged": bad})
     return out

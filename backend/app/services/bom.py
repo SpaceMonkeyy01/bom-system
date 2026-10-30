@@ -32,6 +32,7 @@ class ExtraLine:
 class BOMRequest:
     order_id: int
     template_id: int | None = None  # default: the sign type's published template
+    template: Any = None  # an in-memory Template (unsaved editor state) takes precedence; never persisted
     parameters: dict[str, Any] = field(default_factory=dict)
     overrides: dict[int, float] = field(default_factory=dict)  # component_line_id -> qty
     override_notes: dict[int, str] = field(default_factory=dict)
@@ -92,7 +93,7 @@ def build_bom(db: Session, req: BOMRequest) -> BOM:
     order = db.get(Order, req.order_id)
     if not order:
         raise ValueError(f"Order {req.order_id} not found")
-    template = pick_template(db, order, req.template_id)
+    template = req.template or pick_template(db, order, req.template_id)
     resolver = RateResolver(db, req.as_of)
     heads = _cost_head_index(db)
 
@@ -156,7 +157,7 @@ def build_bom(db: Session, req: BOMRequest) -> BOM:
         tww = total * (1 + w / 100)
         bl = BOMLine(
             seq=seq,
-            component_line_id=ln.id,
+            component_line_id=ln.id if ln.id and ln.id > 0 else None,  # transient preview lines carry negative ids
             material_id=ln.material_id,
             material_name=r.name,
             usage=ln.usage,
