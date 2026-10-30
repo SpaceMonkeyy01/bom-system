@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Templates</title>
+</head>
+<body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&amp;family=Jost:wght@600&amp;display=swap">
+<style>
+body{margin:0;background:#eef3f6;color:#1d2b3a;font-family:"Atkinson Hyperlegible Next",ui-sans-serif,system-ui,sans-serif;font-size:14px;line-height:20px}
+a{color:#00435c}a:hover{color:#002c3d}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:4.4px;color:#1d2b3a;text-decoration:none}
+.nav a:hover{background:#e7f0f5}
+.nav a[aria-current="page"]{background:#d9e8ef;font-weight:700;color:#00435c}
+.pill{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:9999px;font-size:12px;line-height:16px;font-weight:700;white-space:nowrap}
+.tbl{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.tbl th{text-align:left;font-size:12px;line-height:16px;font-weight:700;color:#5f6e82;padding:8px 12px;background:#f3f5f8;border-bottom:1px solid #dce1e8;white-space:nowrap}
+.tbl td{padding:10px 12px;border-bottom:1px solid #dce1e8;vertical-align:middle}
+.tbl tbody tr:hover td{background:#f3f5f8}
+.num{text-align:right}
+.btn{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;border-radius:4.4px;border:1px solid #cbd3dd;background:#fff;color:#1d2b3a;font:inherit;font-weight:700;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn:hover{background:#e7f0f5}
+.btn-primary{background:#00435c;border-color:#00435c;color:#fff}
+.btn-primary:hover{background:#002c3d}
+.input{height:36px;padding:0 12px;border:1px solid #cbd3dd;border-radius:4.4px;font:inherit;color:#1d2b3a;background:#fff;box-sizing:border-box}
+.input::placeholder{color:#5f6e82}
+.todo{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #dce1e8;text-decoration:none;color:inherit}
+.todo:hover{background:#f3f5f8}
+</style>
+
+<div style="display:flex;flex-wrap:wrap;min-height:960px;background:#eef3f6">
+
+  <nav aria-label="Main" style="width:256px;box-sizing:border-box;padding:20px 16px;display:flex;flex-direction:column;gap:24px">
+    <div style="display:flex;align-items:center;gap:10px;padding:0 12px">
+      <div aria-hidden="true" style="width:28px;height:28px;border-radius:6.4px;background:#00435c;display:grid;place-items:center;color:#fff;font-family:Jost,sans-serif;font-weight:600;font-size:14px">B</div>
+      <div style="display:flex;flex-direction:column"><span style="font-family:Jost,sans-serif;font-weight:600;font-size:16px;line-height:20px">BOM System</span><span style="font-size:12px;line-height:16px;color:#5f6e82">Epic Crafting</span></div>
+    </div>
+    <div class="nav" style="display:flex;flex-direction:column;gap:2px">
+      <a href="01-orders-queue.html">Orders</a>
+      <a href="04-templates.html" aria-current="page">Templates</a>
+      <a href="#inventory">Inventory</a>
+      <a href="#sync">Airtable sync</a>
+      <a href="#reports">Reports</a>
+    </div>
+  </nav>
+
+  <main style="flex:999 1 560px;min-width:0;margin:12px 12px 12px 0;background:#fff;border-radius:6.4px;border:1px solid #dce1e8;box-sizing:border-box;padding:24px;display:flex;flex-direction:column;gap:20px">
+
+    <header style="display:flex;flex-wrap:wrap;align-items:flex-start;gap:16px">
+      <div style="display:flex;flex-direction:column;gap:4px;flex:1 1 320px">
+        <h1 style="margin:0;font-family:Jost,sans-serif;font-weight:600;font-size:24px;line-height:32px">Templates</h1>
+        <p style="margin:0;color:#5f6e82">One template per sign type. Orders can only be costed against a published version.</p>
+      </div>
+      <button class="btn btn-primary" type="button" style="height:36px">New sign type</button>
+    </header>
+
+    <section aria-label="Summary" style="display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:16px">
+      <a href="#published" style="text-decoration:none;color:inherit;border:1px solid #dce1e8;border-radius:6.4px;padding:16px;display:flex;flex-direction:column;gap:4px">
+        <span style="font-family:Jost,sans-serif;font-weight:600;font-size:28px;line-height:32px;color:#b3261e">1 of 45</span><span>imported templates is published</span>
+        <span style="font-size:12px;line-height:16px;color:#5f6e82">44 drafts are waiting on flagged lines</span>
+      </a>
+      <a href="#todo" style="text-decoration:none;color:inherit;border:1px solid #dce1e8;border-radius:6.4px;padding:16px;display:flex;flex-direction:column;gap:4px">
+        <span style="font-family:Jost,sans-serif;font-weight:600;font-size:28px;line-height:32px;color:#8f5400">810</span><span>flagged lines to resolve</span>
+        <span style="font-size:12px;line-height:16px;color:#5f6e82">598 are typed numbers, not formulas</span>
+      </a>
+      <a href="#unmapped" style="text-decoration:none;color:inherit;border:1px solid #dce1e8;border-radius:6.4px;padding:16px;display:flex;flex-direction:column;gap:4px">
+        <span style="font-family:Jost,sans-serif;font-weight:600;font-size:28px;line-height:32px;color:#8f5400">21</span><span>Airtable names map to no sign type</span>
+        <span style="font-size:12px;line-height:16px;color:#5f6e82">37 orders blocked until mapped</span>
+      </a>
+    </section>
+
+    <div style="display:grid;grid-template-columns:minmax(0, 1fr) 380px;gap:20px;align-items:start">
+
+      <!-- Sign types -->
+      <section aria-labelledby="st-h" style="border:1px solid #dce1e8;border-radius:6.4px;overflow:hidden;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid #dce1e8;flex-wrap:wrap">
+          <h2 id="st-h" style="margin:0;font-size:16px;line-height:24px;font-weight:700">Sign types</h2>
+          <label for="f" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Filter</label>
+          <input id="f" class="input" type="search" placeholder="Filter by name or alias" style="width:240px;margin-left:auto">
+          <select class="input" aria-label="Show"><option>With orders first</option><option>Needs attention</option><option>A–Z</option></select>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="tbl">
+            <thead><tr><th>Sign type</th><th>Published</th><th>Draft</th><th class="num">Orders</th><th></th></tr></thead>
+            <tbody>
+              <tr><td><a href="#st" style="font-weight:700;text-decoration:none">Metal - With Backlit</a><div style="font-size:12px;line-height:16px;color:#5f6e82">code 01 · alias “3D Metal Backlit”</div></td><td><span class="pill" style="background:#e3f4ea;color:#1e7f4f">v30 · 12 Oct</span></td><td style="color:#5f6e82">—</td><td class="num">142</td><td style="text-align:right"><a class="btn" href="05-template-editor.html">New draft</a></td></tr>
+              <tr><td><a href="#st" style="font-weight:700;text-decoration:none">2D metal with U.V print</a><div style="font-size:12px;line-height:16px;color:#5f6e82">code 13</div></td><td><span class="pill" style="background:#fbe5e3;color:#b3261e">None</span></td><td><a href="05-template-editor.html" style="font-weight:700">v1 · 7 flagged</a></td><td class="num">31</td><td style="text-align:right"><a class="btn btn-primary" href="05-template-editor.html">Edit draft</a></td></tr>
+              <tr><td><a href="#st" style="font-weight:700;text-decoration:none">3D Metal with UV Printed (Illuminated)</a><div style="font-size:12px;line-height:16px;color:#5f6e82">code 08 · alias “3D Metal with UV Printed (Lit)”</div></td><td><span class="pill" style="background:#fbe5e3;color:#b3261e">None</span></td><td><a href="05-template-editor.html" style="font-weight:700">v1 · 6 flagged</a></td><td class="num">21</td><td style="text-align:right"><a class="btn btn-primary" href="05-template-editor.html">Edit draft</a></td></tr>
+              <tr><td><a href="#st" style="font-weight:700;text-decoration:none">3D Acrylic - with frontlit</a><div style="font-size:12px;line-height:16px;color:#5f6e82">code 16</div></td><td><span class="pill" style="background:#fbe5e3;color:#b3261e">None</span></td><td><a href="05-template-editor.html" style="font-weight:700">v1 · 25 flagged</a></td><td class="num">16</td><td style="text-align:right"><a class="btn btn-primary" href="05-template-editor.html">Edit draft</a></td></tr>
+              <tr><td><a href="#st" style="font-weight:700;text-decoration:none">3D Metal Backlit with Backboard</a></td><td><span class="pill" style="background:#fbe5e3;color:#b3261e">No template</span></td><td style="color:#5f6e82">—</td><td class="num">14</td><td style="text-align:right"><a class="btn" href="05-template-editor.html">Create from “Metal - With Backlit”</a></td></tr>
+              <tr><td><a href="#st" style="font-weight:700;text-decoration:none">3D Blade Sign</a><div style="font-size:12px;line-height:16px;color:#5f6e82">code 12</div></td><td><span class="pill" style="background:#fbe5e3;color:#b3261e">None</span></td><td><a href="05-template-editor.html" style="font-weight:700">v2 · 21 flagged</a></td><td class="num">12</td><td style="text-align:right"><a class="btn btn-primary" href="05-template-editor.html">Edit draft</a></td></tr>
+              <tr><td><a href="#st" style="font-weight:700;text-decoration:none">3D Metal Backlit with Acrylic Backboard</a></td><td><span class="pill" style="background:#fbe5e3;color:#b3261e">No template</span></td><td style="color:#5f6e82">—</td><td class="num">6</td><td style="text-align:right"><a class="btn" href="05-template-editor.html">Create</a></td></tr>
+              <tr><td><a href="#st" style="font-weight:700;text-decoration:none">3D Acrylic Frontlit with Raceway</a><div style="font-size:12px;line-height:16px;color:#5f6e82">code 20</div></td><td><span class="pill" style="background:#fbe5e3;color:#b3261e">None</span></td><td><a href="05-template-editor.html" style="font-weight:700">v1 · 26 flagged</a></td><td class="num">4</td><td style="text-align:right"><a class="btn btn-primary" href="05-template-editor.html">Edit draft</a></td></tr>
+              <tr><td><a href="#st" style="font-weight:700;text-decoration:none">2D - Aluminum</a></td><td><span class="pill" style="background:#eef1f5;color:#5d6b7a">No template</span></td><td style="color:#5f6e82">—</td><td class="num" style="color:#5f6e82">0</td><td style="text-align:right"><a class="btn" href="05-template-editor.html">Create</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="padding:10px 16px;font-size:12px;line-height:16px;color:#5f6e82">9 of 99 sign types · sorted by orders · 71 have no orders this month</div>
+      </section>
+
+      <!-- Right column: to-do and unmapped -->
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <section aria-labelledby="todo-h" style="border:1px solid #dce1e8;border-radius:6.4px;overflow:hidden">
+          <div style="padding:12px 16px;border-bottom:1px solid #dce1e8;display:flex;flex-direction:column;gap:2px">
+            <h2 id="todo-h" style="margin:0;font-size:16px;line-height:24px;font-weight:700">Your to-do</h2>
+            <span style="font-size:12px;line-height:16px;color:#5f6e82">Drafts with the most orders waiting on them first.</span>
+          </div>
+          <a class="todo" href="05-template-editor.html"><span class="pill" style="background:#fdf0d9;color:#8f5400;width:44px;justify-content:center">7</span><span style="flex:1;min-width:0"><strong>2D metal with U.V print</strong><span style="display:block;font-size:12px;line-height:16px;color:#5f6e82">31 orders · 3 unknown inputs, 4 typed numbers</span></span></a>
+          <a class="todo" href="05-template-editor.html"><span class="pill" style="background:#fdf0d9;color:#8f5400;width:44px;justify-content:center">6</span><span style="flex:1;min-width:0"><strong>3D Metal with UV Printed (Illuminated)</strong><span style="display:block;font-size:12px;line-height:16px;color:#5f6e82">21 orders · 6 typed numbers</span></span></a>
+          <a class="todo" href="05-template-editor.html"><span class="pill" style="background:#fdf0d9;color:#8f5400;width:44px;justify-content:center">25</span><span style="flex:1;min-width:0"><strong>3D Acrylic - with frontlit</strong><span style="display:block;font-size:12px;line-height:16px;color:#5f6e82">16 orders · 2 parse errors, 23 typed numbers</span></span></a>
+          <a class="todo" href="05-template-editor.html"><span class="pill" style="background:#fdf0d9;color:#8f5400;width:44px;justify-content:center">21</span><span style="flex:1;min-width:0"><strong>3D Blade Sign</strong><span style="display:block;font-size:12px;line-height:16px;color:#5f6e82">12 orders · 21 typed numbers</span></span></a>
+          <a class="todo" href="05-template-editor.html" style="border-bottom:0"><span class="pill" style="background:#eef1f5;color:#5d6b7a;width:44px;justify-content:center">751</span><span style="flex:1;min-width:0"><strong>40 more drafts</strong><span style="display:block;font-size:12px;line-height:16px;color:#5f6e82">no orders this month</span></span></a>
+        </section>
+
+        <section aria-labelledby="um-h" style="border:1px solid #dce1e8;border-radius:6.4px;overflow:hidden">
+          <div style="padding:12px 16px;border-bottom:1px solid #dce1e8;display:flex;flex-direction:column;gap:2px">
+            <h2 id="um-h" style="margin:0;font-size:16px;line-height:24px;font-weight:700">Airtable names to map</h2>
+            <span style="font-size:12px;line-height:16px;color:#5f6e82">Pick a sign type and its orders re-map at once.</span>
+          </div>
+          <div style="display:flex;flex-direction:column">
+            <div style="display:grid;grid-template-columns:minmax(0, 1fr) 150px;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid #dce1e8"><span style="min-width:0"><strong>A frame</strong><span style="display:block;font-size:12px;line-height:16px;color:#5f6e82">9 orders · no close match</span></span><select class="input" aria-label="Map A frame to" style="height:32px"><option>Map to…</option><option>New sign type</option></select></div>
+            <div style="display:grid;grid-template-columns:minmax(0, 1fr) 150px;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid #dce1e8"><span style="min-width:0"><strong>PVC Box Sign - Non-Lit</strong><span style="display:block;font-size:12px;line-height:16px;color:#5f6e82">3 orders</span></span><select class="input" aria-label="Map PVC Box Sign to" style="height:32px"><option>3d Metal Non-lit Sign?</option><option>New sign type</option></select></div>
+            <div style="display:grid;grid-template-columns:minmax(0, 1fr) 150px;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid #dce1e8"><span style="min-width:0"><strong>3D Hollow Cut Sign (Lit)</strong><span style="display:block;font-size:12px;line-height:16px;color:#5f6e82">3 orders</span></span><select class="input" aria-label="Map 3D Hollow Cut Sign to" style="height:32px"><option>3D Acrylic Side Lit?</option><option>New sign type</option></select></div>
+            <a href="#all-unmapped" style="padding:10px 12px;font-size:12px">All 21 names</a>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

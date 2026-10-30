@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Saved BOM</title>
+</head>
+<body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&amp;family=Jost:wght@600&amp;display=swap">
+<style>
+body{margin:0;background:#eef3f6;color:#1d2b3a;font-family:"Atkinson Hyperlegible Next",ui-sans-serif,system-ui,sans-serif;font-size:14px;line-height:20px}
+a{color:#00435c}a:hover{color:#002c3d}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:4.4px;color:#1d2b3a;text-decoration:none}
+.nav a:hover{background:#e7f0f5}
+.nav a[aria-current="page"]{background:#d9e8ef;font-weight:700;color:#00435c}
+.pill{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:9999px;font-size:12px;line-height:16px;font-weight:700;white-space:nowrap}
+.tag{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:9999px;font-size:11px;line-height:16px;font-weight:700;white-space:nowrap}
+.tbl{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.tbl th{text-align:left;font-size:12px;line-height:16px;font-weight:700;color:#5f6e82;padding:8px 12px;background:#f3f5f8;border-bottom:1px solid #dce1e8;white-space:nowrap}
+.tbl td{padding:8px 12px;border-bottom:1px solid #dce1e8;vertical-align:middle}
+.num{text-align:right}
+.btn{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:4.4px;border:1px solid #cbd3dd;background:#fff;color:#1d2b3a;font:inherit;font-weight:700;cursor:pointer;text-decoration:none}
+.btn:hover{background:#e7f0f5}
+.btn-primary{background:#00435c;border-color:#00435c;color:#fff}
+.btn-primary:hover{background:#002c3d}
+.kv{display:grid;grid-template-columns:1fr auto;gap:4px 12px}
+.kv dt{color:#5f6e82;margin:0}.kv dd{margin:0;font-weight:700;text-align:right}
+.delta-up{color:#b3261e;font-weight:700}.delta-down{color:#1e7f4f;font-weight:700}
+</style>
+
+<div style="display:flex;flex-wrap:wrap;min-height:1040px;background:#eef3f6">
+
+  <nav aria-label="Main" style="width:256px;box-sizing:border-box;padding:20px 16px;display:flex;flex-direction:column;gap:24px">
+    <div style="display:flex;align-items:center;gap:10px;padding:0 12px">
+      <div aria-hidden="true" style="width:28px;height:28px;border-radius:6.4px;background:#00435c;display:grid;place-items:center;color:#fff;font-family:Jost,sans-serif;font-weight:600;font-size:14px">B</div>
+      <div style="display:flex;flex-direction:column"><span style="font-family:Jost,sans-serif;font-weight:600;font-size:16px;line-height:20px">BOM System</span><span style="font-size:12px;line-height:16px;color:#5f6e82">Epic Crafting</span></div>
+    </div>
+    <div class="nav" style="display:flex;flex-direction:column;gap:2px">
+      <a href="01-orders-queue.html" aria-current="page">Orders</a>
+      <a href="04-templates.html">Templates</a>
+      <a href="#inventory">Inventory</a>
+      <a href="#sync">Airtable sync</a>
+      <a href="#reports">Reports</a>
+    </div>
+  </nav>
+
+  <main style="flex:999 1 560px;min-width:0;margin:12px 12px 12px 0;background:#fff;border-radius:6.4px;border:1px solid #dce1e8;box-sizing:border-box;padding:24px;display:flex;flex-direction:column;gap:20px">
+
+    <nav aria-label="Breadcrumb" style="font-size:12px;line-height:16px;color:#5f6e82"><a href="01-orders-queue.html">Orders</a> / <a href="02-create-bom.html">BS-ET-16765</a> / BOM v18</nav>
+
+    <header style="display:flex;flex-wrap:wrap;align-items:flex-start;gap:16px">
+      <div style="display:flex;flex-direction:column;gap:4px;flex:1 1 320px">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <h1 style="margin:0;font-family:Jost,sans-serif;font-weight:600;font-size:24px;line-height:32px">BS-ET-16765 · BOM v18</h1>
+          <span class="pill" style="background:#e4edf7;color:#3e5c7e">Written back to Airtable</span>
+        </div>
+        <p style="margin:0;color:#5f6e82">Metal - With Backlit v30 · saved 30 Oct 2026 by Ali Hassan · recalculated from v17</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <label for="ver" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Version</label>
+        <select id="ver" class="btn" style="font-weight:400;padding-right:28px"><option>v18 · 30 Oct · PKR 14,513 (current)</option><option>v17 · 29 Oct · PKR 14,210</option><option>v16 · 29 Oct · PKR 14,210</option><option>… 15 older versions</option></select>
+        <a class="btn" href="#compare">Compare with v17</a>
+        <a class="btn btn-primary" href="02-create-bom.html">New version</a>
+      </div>
+    </header>
+
+    <!-- Rates changed banner -->
+    <section aria-labelledby="rc-h" style="border:1px solid #f2b766;background:#fdf0d9;border-radius:6.4px;padding:16px;display:grid;grid-template-columns:minmax(0, 1fr) auto;gap:16px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:8px;min-width:0">
+        <h2 id="rc-h" style="margin:0;font-size:16px;line-height:24px;font-weight:700;color:#8f5400">3 rates have changed since this BOM was saved</h2>
+        <p style="margin:0;color:#1d2b3a">Recalculating with today’s rates would make it <strong>PKR 14,897</strong> (<span class="delta-up">+384, +2.6 %</span>). Nothing is written until you save the new version.</p>
+        <table style="border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:12px;line-height:16px">
+          <thead><tr><th style="text-align:left;padding:4px 12px 4px 0;color:#5f6e82">Line</th><th style="text-align:right;padding:4px 12px;color:#5f6e82">Saved</th><th style="text-align:right;padding:4px 12px;color:#5f6e82">Today</th><th style="text-align:left;padding:4px 0 4px 12px;color:#5f6e82">Why</th></tr></thead>
+          <tbody>
+            <tr><td style="padding:4px 12px 4px 0;font-weight:700">SS Metal 14g</td><td style="text-align:right;padding:4px 12px">837</td><td style="text-align:right;padding:4px 12px;font-weight:700">880</td><td style="padding:4px 0 4px 12px">New supplier rate · Khizer Brothers · 30 Oct</td></tr>
+            <tr><td style="padding:4px 12px 4px 0;font-weight:700">LED Strips UL 6500K</td><td style="text-align:right;padding:4px 12px">597.66</td><td style="text-align:right;padding:4px 12px;font-weight:700">612.00</td><td style="padding:4px 0 4px 12px">iFlow BS import · 29 Oct</td></tr>
+            <tr><td style="padding:4px 12px 4px 0;font-weight:700">Acrylic White 8mm Matt</td><td style="text-align:right;padding:4px 12px">844</td><td style="text-align:right;padding:4px 12px;font-weight:700">790</td><td style="padding:4px 0 4px 12px">BOM rate refreshed · 30 Oct</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;align-items:stretch">
+        <a class="btn btn-primary" href="#recalc" style="justify-content:center">Recalculate → preview v19</a>
+        <a class="btn" href="#dismiss" style="justify-content:center">Keep v18</a>
+      </div>
+    </section>
+
+    <div style="display:grid;grid-template-columns:minmax(0, 1fr) 320px;gap:20px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:20px;min-width:0">
+        <section aria-labelledby="lines-h" style="border:1px solid #dce1e8;border-radius:6.4px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #dce1e8;flex-wrap:wrap">
+            <h2 id="lines-h" style="margin:0;font-size:16px;line-height:24px;font-weight:700">Lines</h2>
+            <span style="font-size:12px;line-height:16px;color:#5f6e82">Rates frozen at save · 15 lines · 11 at zero hidden</span>
+            <a href="#xlsx" style="margin-left:auto;font-size:12px">Download xlsx</a>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="tbl">
+              <thead><tr><th>Material</th><th>Usage</th><th class="num">Qty</th><th>Unit</th><th class="num">Rate</th><th>Source at save</th><th class="num">Wastage</th><th class="num">Total</th><th>Head</th></tr></thead>
+              <tbody>
+                <tr><td><strong>SS Metal 14g</strong></td><td style="color:#5f6e82">Front face</td><td class="num">1.3</td><td>Sqft</td><td class="num">837 <span class="tag" style="background:#fdf0d9;color:#8f5400;margin-left:4px">changed</span></td><td><span class="tag" style="background:#e4edf7;color:#3e5c7e">Supplier · Khizer</span></td><td class="num">20 %</td><td class="num"><strong>1,306</strong></td><td style="color:#5f6e82">Metal</td></tr>
+                <tr><td><strong>SS Metal 26g Silver Brushed</strong></td><td style="color:#5f6e82">Return</td><td class="num">0.6</td><td>Sqft</td><td class="num">260</td><td><span class="tag" style="background:#fdf0d9;color:#8f5400">BOM · Sep 25</span></td><td class="num">20 %</td><td class="num"><strong>187</strong></td><td style="color:#5f6e82">Metal</td></tr>
+                <tr><td><strong>Acrylic White 8mm Matt</strong></td><td style="color:#5f6e82">Back acrylic</td><td class="num">1.2</td><td>Sqft</td><td class="num">844 <span class="tag" style="background:#fdf0d9;color:#8f5400;margin-left:4px">changed</span></td><td><span class="tag" style="background:#fdf0d9;color:#8f5400">BOM · Sep 25</span></td><td class="num">20 %</td><td class="num"><strong>1,215</strong></td><td style="color:#5f6e82">Acrylic</td></tr>
+                <tr><td><strong>Tanka Nozzle</strong><div style="font-size:12px;line-height:16px;color:#5f6e82">Rate converted from per-gram</div></td><td></td><td class="num">0.042</td><td>Kg</td><td class="num">8,000</td><td><span class="tag" style="background:#fdf0d9;color:#8f5400">BOM · Sep 25</span></td><td class="num">0 %</td><td class="num"><strong>336</strong></td><td style="color:#5f6e82">Misc</td></tr>
+                <tr><td><strong>LED Strips UL 6500K China</strong></td><td></td><td class="num">2.195</td><td>Meter</td><td class="num">597.66 <span class="tag" style="background:#fdf0d9;color:#8f5400;margin-left:4px">changed</span></td><td><span class="tag" style="background:#e3f4ea;color:#1e7f4f">iFlow · BS</span></td><td class="num">0 %</td><td class="num"><strong>1,312</strong></td><td style="color:#5f6e82">LEDs</td></tr>
+                <tr><td><strong>JUL Power Supply 120W 10A IP68</strong></td><td></td><td class="num">1</td><td>Piece</td><td class="num">6,732.03</td><td><span class="tag" style="background:#e3f4ea;color:#1e7f4f">iFlow · BS</span></td><td class="num">0 %</td><td class="num"><strong>6,732</strong></td><td style="color:#5f6e82">Power supply</td></tr>
+                <tr><td><strong>Wire UL 18 Gauge (Red &amp; white)</strong></td><td></td><td class="num">3</td><td>Meter</td><td class="num">151</td><td><span class="tag" style="background:#fdf0d9;color:#8f5400">BOM · Sep 25</span></td><td class="num">0 %</td><td class="num"><strong>453</strong></td><td style="color:#5f6e82">Wires</td></tr>
+                <tr><td><strong>Epoxy Aster Gray Colour</strong></td><td style="color:#5f6e82">Primer</td><td class="num">143.74</td><td>Gram</td><td class="num">1.74</td><td><span class="tag" style="background:#fdf0d9;color:#8f5400">BOM · Sep 25</span></td><td class="num">0 %</td><td class="num"><strong>250</strong></td><td style="color:#5f6e82">Paint</td></tr>
+                <tr><td><strong>Nexa 2k HS Jet Black (P425-950)</strong></td><td style="color:#5f6e82">Matt</td><td class="num">46.2</td><td>Gram</td><td class="num">8</td><td><span class="tag" style="background:#fdf0d9;color:#8f5400">BOM · Sep 25</span></td><td class="num">0 %</td><td class="num"><strong>370</strong></td><td style="color:#5f6e82">Paint</td></tr>
+                <tr><td><strong>Hanging kit</strong></td><td style="color:#5f6e82">Misc</td><td class="num">1</td><td>Piece</td><td class="num">500</td><td><span class="tag" style="background:#eef1f5;color:#5d6b7a">Manual</span></td><td class="num">0 %</td><td class="num"><strong>500</strong></td><td style="color:#5f6e82">Misc</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section aria-labelledby="params-h" style="border:1px solid #dce1e8;border-radius:6.4px;padding:16px;display:flex;flex-direction:column;gap:8px">
+          <h2 id="params-h" style="margin:0;font-size:16px;line-height:24px;font-weight:700">Inputs used</h2>
+          <div style="display:grid;grid-template-columns:repeat(6, minmax(0, 1fr));gap:12px">
+            <div><div style="font-size:12px;line-height:16px;color:#5f6e82">Finish</div><strong>Matt</strong></div>
+            <div><div style="font-size:12px;line-height:16px;color:#5f6e82">Crunched area SS</div><strong>1 ft²</strong></div>
+            <div><div style="font-size:12px;line-height:16px;color:#5f6e82">LOC of SS</div><strong>6 ft</strong></div>
+            <div><div style="font-size:12px;line-height:16px;color:#5f6e82">Returns SS</div><strong>1 in</strong></div>
+            <div><div style="font-size:12px;line-height:16px;color:#5f6e82">Surface area</div><strong>2 ft²</strong></div>
+            <div><div style="font-size:12px;line-height:16px;color:#5f6e82">Connections</div><strong>2</strong></div>
+          </div>
+        </section>
+      </div>
+
+      <aside aria-label="Totals" style="display:flex;flex-direction:column;gap:16px">
+        <section style="border:1px solid #dce1e8;border-radius:6.4px;padding:16px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;flex-direction:column">
+            <span style="font-size:12px;line-height:16px;font-weight:700;color:#5f6e82">Grand total</span>
+            <span style="font-family:Jost,sans-serif;font-weight:600;font-size:28px;line-height:32px">PKR 14,513</span>
+            <span style="color:#5f6e82">Material $64.50 · Production <strong style="color:#1d2b3a">$107.50</strong></span>
+            <span style="font-size:12px;line-height:16px;color:#5f6e82">at PKR 270 per USD</span>
+          </div>
+          <dl class="kv" style="margin:0;border-top:1px solid #dce1e8;padding-top:12px">
+            <dt>Base</dt><dd>12,742</dd><dt>Wastage</dt><dd>451</dd><dt>Misc 10 %</dt><dd>1,319</dd>
+          </dl>
+          <dl class="kv" style="margin:0;border-top:1px solid #dce1e8;padding-top:12px">
+            <dt style="grid-column:1 / -1;font-weight:700;color:#1d2b3a">By cost head</dt>
+            <dt>Power supply</dt><dd>6,732</dd><dt>Misc</dt><dd>2,155</dd><dt>Metal</dt><dd>1,493</dd><dt>LEDs</dt><dd>1,312</dd><dt>Acrylic</dt><dd>1,215</dd><dt>Paint</dt><dd>1,152</dd><dt>Wires</dt><dd>453</dd>
+          </dl>
+        </section>
+        <section style="border:1px solid #dce1e8;border-radius:6.4px;padding:16px;display:flex;flex-direction:column;gap:8px">
+          <h2 style="margin:0;font-size:14px;line-height:20px;font-weight:700">Airtable</h2>
+          <dl class="kv" style="margin:0"><dt>BOM Price</dt><dd>$64.50</dd><dt>Production cost</dt><dd>$107.50</dd><dt>Box</dt><dd>—</dd><dt>Est. shipment</dt><dd>—</dd><dt>BOM Done</dt><dd>30 Oct 14:02</dd></dl>
+          <span style="font-size:12px;line-height:16px;color:#1e7f4f;font-weight:700">Written back 30 Oct 14:02</span>
+        </section>
+      </aside>
+    </div>
+  </main>
+</div>
+</body>
+</html>

@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Create BOM</title>
+</head>
+<body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&amp;family=Jost:wght@600&amp;display=swap">
+<style>
+body{margin:0;background:#eef3f6;color:#1d2b3a;font-family:"Atkinson Hyperlegible Next",ui-sans-serif,system-ui,sans-serif;font-size:14px;line-height:20px}
+a{color:#00435c}a:hover{color:#002c3d}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:4.4px;color:#1d2b3a;text-decoration:none}
+.nav a:hover{background:#e7f0f5}
+.nav a[aria-current="page"]{background:#d9e8ef;font-weight:700;color:#00435c}
+.pill{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:9999px;font-size:12px;line-height:16px;font-weight:700;white-space:nowrap}
+.tag{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:9999px;font-size:11px;line-height:16px;font-weight:700;white-space:nowrap}
+.tbl{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.tbl th{text-align:left;font-size:12px;line-height:16px;font-weight:700;color:#5f6e82;padding:8px 12px;background:#f3f5f8;border-bottom:1px solid #dce1e8;white-space:nowrap}
+.tbl td{padding:8px 12px;border-bottom:1px solid #dce1e8;vertical-align:middle}
+.tbl tbody tr:hover td{background:#f3f5f8}
+.num{text-align:right}
+.btn{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:4.4px;border:1px solid #cbd3dd;background:#fff;color:#1d2b3a;font:inherit;font-weight:700;cursor:pointer}
+.btn:hover{background:#e7f0f5}
+.btn-primary{background:#00435c;border-color:#00435c;color:#fff}
+.btn-primary:hover{background:#002c3d}
+.input{height:36px;padding:0 12px;border:1px solid #cbd3dd;border-radius:4.4px;font:inherit;color:#1d2b3a;background:#fff;box-sizing:border-box;width:100%}
+.input::placeholder{color:#5f6e82}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:12px;line-height:16px;font-weight:700;color:#5f6e82}
+.kv{display:grid;grid-template-columns:96px 1fr;gap:4px 12px}
+.kv dt{color:#5f6e82;margin:0}.kv dd{margin:0;font-weight:700}
+.qty{width:72px;height:30px;text-align:right;padding:0 8px;border:1px solid #cbd3dd;border-radius:4.4px;font:inherit;font-variant-numeric:tabular-nums}
+</style>
+
+<div style="display:flex;flex-wrap:wrap;min-height:1100px;background:#eef3f6">
+
+  <nav aria-label="Main" style="width:256px;box-sizing:border-box;padding:20px 16px;display:flex;flex-direction:column;gap:24px">
+    <div style="display:flex;align-items:center;gap:10px;padding:0 12px">
+      <div aria-hidden="true" style="width:28px;height:28px;border-radius:6.4px;background:#00435c;display:grid;place-items:center;color:#fff;font-family:Jost,sans-serif;font-weight:600;font-size:14px">B</div>
+      <div style="display:flex;flex-direction:column"><span style="font-family:Jost,sans-serif;font-weight:600;font-size:16px;line-height:20px">BOM System</span><span style="font-size:12px;line-height:16px;color:#5f6e82">Epic Crafting</span></div>
+    </div>
+    <div class="nav" style="display:flex;flex-direction:column;gap:2px">
+      <a href="01-orders-queue.html" aria-current="page">Orders</a>
+      <a href="04-templates.html">Templates</a>
+      <a href="#inventory">Inventory</a>
+      <a href="#sync">Airtable sync</a>
+      <a href="#reports">Reports</a>
+    </div>
+  </nav>
+
+  <main style="flex:999 1 560px;min-width:0;margin:12px 12px 12px 0;background:#fff;border-radius:6.4px;border:1px solid #dce1e8;box-sizing:border-box;padding:24px;display:flex;flex-direction:column;gap:20px">
+
+    <nav aria-label="Breadcrumb" style="font-size:12px;line-height:16px;color:#5f6e82"><a href="01-orders-queue.html">Orders</a> / BS-ET-17150</nav>
+
+    <header style="display:flex;flex-wrap:wrap;align-items:flex-start;gap:16px">
+      <div style="display:flex;flex-direction:column;gap:4px;flex:1 1 320px">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <h1 style="margin:0;font-family:Jost,sans-serif;font-weight:600;font-size:24px;line-height:32px">BS-ET-17150</h1>
+          <span class="pill" style="background:#fbe5e3;color:#b3261e">Overdue · 28 Oct</span>
+          <span class="pill" style="background:#eef1f5;color:#5d6b7a">Check profit, decision pending</span>
+        </div>
+        <p style="margin:0;color:#5f6e82">Blade Sign · Signmakersshop, US · 18 × 12 in · Matte · No backlit · Indoor</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span style="font-size:12px;color:#5f6e82">Template: <strong>Blade Sign v3</strong> (published)</span>
+        <button class="btn" type="button">Change template</button>
+      </div>
+    </header>
+
+    <div style="display:grid;grid-template-columns:minmax(0, 1fr) 320px;gap:20px;align-items:start">
+
+      <!-- Left: inputs, lines -->
+      <div style="display:flex;flex-direction:column;gap:20px;min-width:0">
+
+        <!-- Inputs -->
+        <section aria-labelledby="inputs-h" style="border:1px solid #dce1e8;border-radius:6.4px;padding:16px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <h2 id="inputs-h" style="margin:0;font-size:16px;line-height:24px;font-weight:700">Inputs</h2>
+            <span style="font-size:12px;line-height:16px;color:#8f5400;font-weight:700">2 of 6 still empty</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:12px 16px">
+            <div class="field"><label for="p1">Crunched area SS (ft²)</label><input id="p1" class="input" value="1.5"></div>
+            <div class="field"><label for="p2">Returns SS (in)</label><input id="p2" class="input" value="1"></div>
+            <div class="field"><label for="p3">LOC of SS (ft)</label><input id="p3" class="input" value="6"></div>
+            <div class="field"><label for="p4">Surface area (ft²)</label><input id="p4" class="input" value="2"></div>
+            <div class="field"><label for="p5" style="color:#8f5400">Number of connections</label><input id="p5" class="input" placeholder="required" style="border-color:#8f5400"></div>
+            <div class="field"><label for="p6" style="color:#8f5400">Finish</label><select id="p6" class="input" style="border-color:#8f5400"><option>Matt (from order)</option><option>Gloss</option><option>Satin</option></select></div>
+          </div>
+          <p style="margin:0;font-size:12px;line-height:16px;color:#5f6e82">Width 18 in, height 12 in and area 1.5 ft² come from the order and are available to formulas.</p>
+        </section>
+
+        <!-- Lines -->
+        <section aria-labelledby="lines-h" style="border:1px solid #dce1e8;border-radius:6.4px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #dce1e8;flex-wrap:wrap">
+            <h2 id="lines-h" style="margin:0;font-size:16px;line-height:24px;font-weight:700">Lines</h2>
+            <span style="font-size:12px;line-height:16px;color:#5f6e82">15 with quantity · 24 at zero hidden</span>
+            <label style="margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12px"><input type="checkbox"> Show zero-quantity lines</label>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="tbl">
+              <thead><tr><th>Material</th><th>Usage</th><th class="num">Qty</th><th>Unit</th><th class="num">Rate</th><th>Rate source</th><th class="num">Wastage</th><th class="num">Total</th></tr></thead>
+              <tbody>
+                <tr><td><strong>SS Metal 14g</strong></td><td style="color:#5f6e82">Front face</td><td class="num"><input class="qty" aria-label="Quantity for SS Metal 14g" value="1.3"></td><td>Sqft</td><td class="num">837</td><td><span class="tag" style="background:#e4edf7;color:#3e5c7e">Supplier · Khizer</span></td><td class="num">20 %</td><td class="num"><strong>1,306</strong></td></tr>
+                <tr><td><strong>SS Metal 26g Silver Brushed</strong></td><td style="color:#5f6e82">Return</td><td class="num"><input class="qty" aria-label="Quantity for SS Metal 26g" value="0.6"></td><td>Sqft</td><td class="num">260</td><td><span class="tag" style="background:#fdf0d9;color:#8f5400">BOM · stale (Sep 25)</span></td><td class="num">20 %</td><td class="num"><strong>187</strong></td></tr>
+                <tr><td><strong>Acrylic White 8mm Matt</strong></td><td style="color:#5f6e82">Back acrylic</td><td class="num"><input class="qty" aria-label="Quantity for Acrylic" value="1.2"></td><td>Sqft</td><td class="num">844</td><td><span class="tag" style="background:#fdf0d9;color:#8f5400">BOM · stale (Sep 25)</span></td><td class="num">20 %</td><td class="num"><strong>1,215</strong></td></tr>
+                <tr><td><strong>Tanka Nozzle</strong><div style="font-size:12px;line-height:16px;color:#8f5400">Rate converted from per-gram</div></td><td></td><td class="num"><input class="qty" aria-label="Quantity for Tanka Nozzle" value="0.042"></td><td>Kg</td><td class="num">8,000</td><td><span class="tag" style="background:#fdf0d9;color:#8f5400">BOM · stale</span></td><td class="num">0 %</td><td class="num"><strong>336</strong></td></tr>
+                <tr><td><strong>LED Strips UL 6500K China</strong></td><td></td><td class="num"><input class="qty" aria-label="Quantity for LED strips" value="2.195"></td><td>Meter</td><td class="num">597.66</td><td><span class="tag" style="background:#e3f4ea;color:#1e7f4f">iFlow · BS</span></td><td class="num">0 %</td><td class="num"><strong>1,312</strong></td></tr>
+                <tr><td><strong>JUL Power Supply 120W 10A IP68</strong></td><td></td><td class="num"><input class="qty" aria-label="Quantity for power supply" value="1"></td><td>Piece</td><td class="num">6,732.03</td><td><span class="tag" style="background:#e3f4ea;color:#1e7f4f">iFlow · BS</span></td><td class="num">0 %</td><td class="num"><strong>6,732</strong></td></tr>
+                <tr><td><strong>Epoxy Aster Gray Colour</strong></td><td style="color:#5f6e82">Primer</td><td class="num"><input class="qty" aria-label="Quantity for epoxy" value="143.7"></td><td>Gram</td><td class="num">1.74</td><td><span class="tag" style="background:#fdf0d9;color:#8f5400">BOM · stale</span></td><td class="num">0 %</td><td class="num"><strong>250</strong></td></tr>
+                <tr><td><strong>Nexa 2k HS Jet Black (P425-950)</strong></td><td style="color:#5f6e82">Matt</td><td class="num"><input class="qty" aria-label="Quantity for Nexa black" value="46.2"></td><td>Gram</td><td class="num">8</td><td><span class="tag" style="background:#fdf0d9;color:#8f5400">BOM · stale</span></td><td class="num">0 %</td><td class="num"><strong>370</strong></td></tr>
+                <tr><td><strong>Hanging kit</strong><div style="font-size:12px;line-height:16px;color:#5f6e82">Added by you</div></td><td style="color:#5f6e82">Misc</td><td class="num"><input class="qty" aria-label="Quantity for hanging kit" value="1"></td><td>Piece</td><td class="num">500</td><td><span class="tag" style="background:#eef1f5;color:#5d6b7a">Manual</span></td><td class="num">0 %</td><td class="num"><strong>500</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="padding:12px 16px;border-top:1px solid #dce1e8;display:flex;gap:8px;align-items:center">
+            <label for="addm" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Add material</label>
+            <input id="addm" class="input" placeholder="Add a material: search by name…" style="width:360px">
+            <span style="font-size:12px;color:#5f6e82">or add a one-off cost</span>
+          </div>
+        </section>
+
+        <!-- Order context -->
+        <section aria-labelledby="order-h" style="border:1px solid #dce1e8;border-radius:6.4px;padding:16px;display:grid;grid-template-columns:minmax(0, 1fr) 280px;gap:16px">
+          <div style="display:flex;flex-direction:column;gap:8px;min-width:0">
+            <h2 id="order-h" style="margin:0;font-size:16px;line-height:24px;font-weight:700">Order notes</h2>
+            <p style="margin:0;color:#1d2b3a">2D double-sided UV-printed metal blade sign. Width 18 in × height 12 in. No rod needed. Hangings: black metal chains; hole-to-hole distance to be confirmed with the customer. All hanging accessories included. Outdoor: premium quality, water-proof, weather resistant, rust free.</p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <span style="font-size:12px;line-height:16px;font-weight:700;color:#5f6e82">7 attachments</span>
+            <div style="display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:8px">
+              <div aria-label="design.png" role="img" style="aspect-ratio:1;border-radius:4.4px;background:#d9e8ef"></div>
+              <div aria-label="mockup.png" role="img" style="aspect-ratio:1;border-radius:4.4px;background:#e7f0f5"></div>
+              <div aria-label="chains.jpg" role="img" style="aspect-ratio:1;border-radius:4.4px;background:#f3f5f8;display:grid;place-items:center;color:#5f6e82;font-size:12px;font-weight:700">+4</div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Right: totals, pinned -->
+      <aside aria-label="Totals" style="position:sticky;top:12px;display:flex;flex-direction:column;gap:16px">
+        <section style="border:1px solid #dce1e8;border-radius:6.4px;padding:16px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;flex-direction:column">
+            <span style="font-size:12px;line-height:16px;font-weight:700;color:#5f6e82">Grand total</span>
+            <span style="font-family:Jost,sans-serif;font-weight:600;font-size:28px;line-height:32px">PKR 14,513</span>
+            <span style="color:#5f6e82">Material $64.50 · Production <strong style="color:#1d2b3a">$107.50</strong></span>
+          </div>
+          <dl class="kv" style="margin:0;border-top:1px solid #dce1e8;padding-top:12px">
+            <dt>Base</dt><dd class="num">12,742</dd>
+            <dt>Wastage</dt><dd class="num">451</dd>
+            <dt>Misc 10 %</dt><dd class="num">1,319</dd>
+          </dl>
+          <dl class="kv" style="margin:0;border-top:1px solid #dce1e8;padding-top:12px">
+            <dt style="grid-column:1 / -1;font-weight:700;color:#1d2b3a">By cost head</dt>
+            <dt>Power supply</dt><dd class="num">6,732</dd>
+            <dt>Misc</dt><dd class="num">2,155</dd>
+            <dt>Metal</dt><dd class="num">1,493</dd>
+            <dt>LEDs</dt><dd class="num">1,312</dd>
+            <dt>Acrylic</dt><dd class="num">1,215</dd>
+            <dt>Paint</dt><dd class="num">1,152</dd>
+            <dt>Wires</dt><dd class="num">453</dd>
+          </dl>
+          <div class="field"><label for="box">Box dimension</label><input id="box" class="input" placeholder="e.g. 24 × 16 × 6 in"></div>
+          <div class="field"><label for="ship">Est. shipment (USD)</label><input id="ship" class="input" placeholder="0.00"></div>
+        </section>
+
+        <section aria-labelledby="ready-h" style="border:1px solid #dce1e8;border-radius:6.4px;padding:16px;display:flex;flex-direction:column;gap:10px">
+          <h2 id="ready-h" style="margin:0;font-size:14px;line-height:20px;font-weight:700">Before you save</h2>
+          <ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px">
+            <li style="display:flex;gap:8px;align-items:flex-start"><span class="tag" style="background:#fdf0d9;color:#8f5400">To do</span><span>Fill <a href="#p5">Number of connections</a> and <a href="#p6">Finish</a></span></li>
+            <li style="display:flex;gap:8px;align-items:flex-start"><span class="tag" style="background:#fdf0d9;color:#8f5400">Check</span><span>6 lines use a BOM rate from September 2025</span></li>
+            <li style="display:flex;gap:8px;align-items:flex-start"><span class="tag" style="background:#e3f4ea;color:#1e7f4f">OK</span><span>All units match their rates</span></li>
+          </ul>
+          <button class="btn btn-primary" type="button" disabled style="width:100%;justify-content:center;opacity:.55;cursor:not-allowed">Save BOM</button>
+          <span style="font-size:12px;line-height:16px;color:#5f6e82">Saving writes BOM Price, production cost and BOM Done back to Airtable.</span>
+        </section>
+      </aside>
+    </div>
+  </main>
+</div>
+</body>
+</html>

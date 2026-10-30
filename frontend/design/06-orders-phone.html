@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Orders on phone</title>
+</head>
+<body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&amp;family=Jost:wght@600&amp;display=swap">
+<style>
+body{margin:0;background:#eef3f6;color:#1d2b3a;font-family:"Atkinson Hyperlegible Next",ui-sans-serif,system-ui,sans-serif;font-size:14px;line-height:20px}
+a{color:#00435c}a:hover{color:#002c3d}
+.pill{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:9999px;font-size:12px;line-height:16px;font-weight:700;white-space:nowrap}
+.card{display:flex;flex-direction:column;gap:6px;padding:12px 16px;border-bottom:1px solid #dce1e8;text-decoration:none;color:inherit}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 14px;border-radius:4.4px;border:1px solid #cbd3dd;background:#fff;color:#1d2b3a;font:inherit;font-weight:700;cursor:pointer;text-decoration:none}
+.btn-primary{background:#00435c;border-color:#00435c;color:#fff}
+</style>
+
+<div style="width:390px;height:844px;box-sizing:border-box;background:#eef3f6;display:flex;flex-direction:column;overflow:hidden">
+  <header style="display:flex;align-items:center;gap:12px;padding:16px;background:#eef3f6">
+    <button type="button" aria-label="Menu" style="width:44px;height:44px;border:1px solid #cbd3dd;border-radius:4.4px;background:#fff;display:grid;place-items:center;cursor:pointer"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1d2b3a" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    <h1 style="margin:0;font-family:Jost,sans-serif;font-weight:600;font-size:24px;line-height:32px;flex:1">Orders</h1>
+    <span style="font-size:12px;color:#5f6e82">synced 4 min</span>
+  </header>
+
+  <main style="flex:1;min-height:0;margin:0 16px 16px;background:#fff;border:1px solid #dce1e8;border-radius:6.4px;display:flex;flex-direction:column;overflow:hidden">
+    <div style="padding:12px 16px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid #dce1e8">
+      <p style="margin:0"><strong style="color:#8f5400">3</strong> orders need a BOM · <strong style="color:#b3261e">1</strong> overdue</p>
+      <div role="group" aria-label="Show" style="display:flex;border:1px solid #cbd3dd;border-radius:4.4px;overflow:hidden">
+        <button type="button" aria-pressed="true" style="flex:1;height:40px;border:0;background:#00435c;color:#fff;font:inherit;font-weight:700">Needs BOM</button>
+        <button type="button" aria-pressed="false" style="flex:1;height:40px;border:0;background:#fff;color:#1d2b3a;font:inherit">All · 474</button>
+      </div>
+    </div>
+
+    <div style="flex:1;min-height:0;overflow-y:auto">
+      <a class="card" href="02-create-bom.html">
+        <div style="display:flex;align-items:center;gap:8px"><span class="pill" style="background:#fbe5e3;color:#b3261e">Overdue</span><strong>BS-ET-17150</strong><span style="margin-left:auto;font-size:12px;color:#b3261e;font-weight:700">28 Oct</span></div>
+        <div>Blade Sign · 18 × 12 in</div>
+        <div style="font-size:12px;line-height:16px;color:#5f6e82">Signmakersshop · Matte · No backlit</div>
+        <div style="font-size:12px;line-height:16px;color:#8f5400;font-weight:700">No published template</div>
+      </a>
+      <a class="card" href="02-create-bom.html">
+        <div style="display:flex;align-items:center;gap:8px"><span class="pill" style="background:#fdf0d9;color:#8f5400">Due today</span><strong>BS-SM-17098</strong><span style="margin-left:auto;font-size:12px;color:#8f5400;font-weight:700">30 Oct</span></div>
+        <div>3D Metal with UV Printed (Illuminated) · 60 × 45 in</div>
+        <div style="font-size:12px;line-height:16px;color:#5f6e82">Signmakerz-Ads · Matte · Warm white</div>
+      </a>
+      <a class="card" href="02-create-bom.html">
+        <div style="display:flex;align-items:center;gap:8px"><span class="pill" style="background:#eef1f5;color:#5d6b7a">Needs BOM</span><strong>BS-SM-16964</strong><span style="margin-left:auto;font-size:12px;color:#5f6e82">31 Oct</span></div>
+        <div>3D Metal Backlit with Backboard · 33 × 31 in</div>
+        <div style="font-size:12px;line-height:16px;color:#5f6e82">Signmakerz-Ads · Matte · Cool white</div>
+      </a>
+      <a class="card" href="03-bom-detail.html">
+        <div style="display:flex;align-items:center;gap:8px"><span class="pill" style="background:#e3f4ea;color:#1e7f4f">BOM saved</span><strong>BS-ET-16765</strong><span style="margin-left:auto;font-size:12px;color:#5f6e82">v18</span></div>
+        <div>Metal - With Backlit · 13.5 × 6 in</div>
+        <div style="font-size:12px;line-height:16px;color:#5f6e82">PopCoSigns · PKR 14,513 · $107.50</div>
+      </a>
+      <a class="card" href="03-bom-detail.html" style="border-bottom:0">
+        <div style="display:flex;align-items:center;gap:8px"><span class="pill" style="background:#e4edf7;color:#3e5c7e">Written back</span><strong>BS-ET-16731</strong><span style="margin-left:auto;font-size:12px;color:#5f6e82">v2</span></div>
+        <div>3D Acrylic - with frontlit · 24 × 10 in</div>
+        <div style="font-size:12px;line-height:16px;color:#5f6e82">Signmakersshop · PKR 9,870 · $73.10</div>
+      </a>
+    </div>
+
+    <div style="padding:12px 16px;border-top:1px solid #dce1e8;display:flex;gap:8px">
+      <a class="btn btn-primary" href="02-create-bom.html" style="flex:1">Cost next order</a>
+      <button class="btn" type="button" aria-label="Search" style="width:44px;padding:0"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1d2b3a" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>
+    </div>
+  </main>
+</div>
+</body>
+</html>
