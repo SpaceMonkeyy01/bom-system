@@ -261,7 +261,7 @@ def seed_sign_types_and_templates(db: Session, path=BOM_CHECK_XLSX) -> dict:
                     material_name_hint=(mat.name if mat else (f"Odoo {ln['odoo_ref']}" if ln["odoo_ref"] else "(no material)")),
                     qty_formula=formula,
                     unit_cost_formula=uc if (uc and is_cost_formula(uc)) else None,
-                    uom=norm_uom(ln["uom_hint"]) if ln["uom_hint"] else (mat.uom.code if mat and mat.uom else None),
+                    uom=(mat.uom.code if mat and mat.uom else None) if (not ln["uom_hint"] or str(ln["uom_hint"]).startswith("=")) else norm_uom(ln["uom_hint"]),
                     usage=ln["usage"],
                     cost_tag=cost_tag,
                     work_centre=ln["work_centre"],
