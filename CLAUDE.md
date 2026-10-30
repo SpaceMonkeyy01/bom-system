@@ -17,6 +17,8 @@ backend/
   app/models/             SQLAlchemy models: core (materials, categories, rates, stock), templates, orders/BOMs
   app/services/rates.py   RateResolver — picks a rate per material via RatePolicy (global/category/material)
   app/services/bom.py     build_bom()/save_bom(): order + template + params → frozen, versioned BOM
+  app/services/templates.py  draft/validate/preview/publish/diff for template versions
+  app/services/auth.py    JWT, argon2, PERMISSIONS and require(); app/api/auth_routes.py
   app/api/                FastAPI routes + pydantic schemas (prefix /api)
   app/seed/               loaders from the spreadsheets in data/raw (idempotent): python -m app.seed.run
   scripts/regression_october.py  replays all 555 October sheet blocks through the engine (must stay 100%)
@@ -81,6 +83,8 @@ Postgres 14+ is required. Dev credentials in `.env.example` (bom/bom). Never com
 ## Next
 
 1. Frontend: login screen, then Create-BOM flow (order queue → parameter form → live lines → save) against `/api`.
-2. Template editor (port the prototype's Formulas tab UX) and publish/version flow.
+2. Template editor UI (port the prototype's Formulas tab UX) on the editor API: POST /templates/drafts,
+   PUT /templates/{id}, POST /templates/validate, POST /templates/{id}/preview, POST /templates/{id}/publish,
+   GET /templates/flagged (to-do list), GET /sign-types/unmapped + PATCH /sign-types/{id} (aliases re-map orders).
 3. Airtable live sync + write-back (`app/seed/orders.py::map_airtable_record` is the field mapping).
 4. iFlow import endpoint + review queue for unmatched rows (`app/seed/rates_stock.py::import_stock_rows`).

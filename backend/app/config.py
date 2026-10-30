@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     environment: str = "dev"
     airtable_token: str | None = None
     airtable_base_id: str | None = None
-    jwt_secret: str = "change-me-in-production"
+    jwt_secret: str = "change-me-in-production-use-32-plus-bytes"
     jwt_ttl_hours: int = 12
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
     bootstrap_admin_email: str | None = None  # first admin, created on startup if no users exist
