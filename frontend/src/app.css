@@ -17,7 +17,20 @@ body {
   background: var(--mantine-color-white);
   border: 1px solid var(--mantine-color-gray-3);
   border-radius: var(--mantine-radius-sm);
-  overflow-x: auto;
+  /* the wrapper scrolls, so the sticky header has something to stick to */
+  max-height: calc(100vh - 100px);
+  overflow: auto;
+}
+
+/* On the BOM page the header sticks below the totals bar as the page itself scrolls. */
+.table-wrap-page {
+  max-height: none;
+}
+
+@media (min-width: 1280px) {
+  .table-wrap-page {
+    overflow: visible;
+  }
 }
 
 .dense-table {
@@ -58,4 +71,147 @@ body {
 
 .thumb-empty {
   background: var(--mantine-color-gray-2);
+}
+
+/* Create BOM */
+.bom-page {
+  align-items: start;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 320px minmax(0, 1fr);
+}
+
+@media (max-width: 1000px) {
+  .bom-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.bom-side {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.bom-main {
+  min-width: 0;
+}
+
+.bom-bar {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 10px;
+  position: sticky;
+  top: 0;
+  z-index: 4;
+}
+
+.fact {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.fact > :last-child {
+  text-align: right;
+}
+
+.fact-notes {
+  background: var(--mantine-color-yellow-0);
+  border-radius: var(--mantine-radius-xs);
+  padding: 4px 6px;
+}
+
+.fact-image {
+  border: 1px solid var(--mantine-color-gray-3);
+  border-radius: var(--mantine-radius-xs);
+  display: block;
+  height: 64px;
+  max-width: 96px;
+  object-fit: contain;
+}
+
+.fact-image-broken {
+  align-items: center;
+  background: var(--mantine-color-gray-1);
+  color: var(--mantine-color-gray-7);
+  display: flex;
+  font-size: 11px;
+  overflow: hidden;
+  padding: 4px;
+  width: 96px;
+  word-break: break-all;
+}
+
+.bom-lines .row-error td {
+  background: var(--mantine-color-red-1);
+}
+
+.line-error {
+  color: var(--mantine-color-red-9);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.line-warning {
+  color: var(--mantine-color-orange-9);
+  font-size: 11px;
+}
+
+.line-note {
+  color: var(--mantine-color-gray-7);
+  font-size: 11px;
+}
+
+.line-flag {
+  color: var(--mantine-color-orange-7);
+  cursor: help;
+  margin-left: 4px;
+}
+
+.qty-edited {
+  color: var(--mantine-color-blue-7);
+  cursor: help;
+  margin-left: 3px;
+}
+
+.qty-input {
+  border: 1px solid var(--mantine-color-gray-4);
+  border-radius: var(--mantine-radius-xs);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  height: 20px;
+  padding: 0 4px;
+  text-align: right;
+  width: 62px;
+}
+
+.qty-input:focus {
+  border-color: var(--mantine-color-blue-6);
+  outline: 1px solid var(--mantine-color-blue-6);
+}
+
+.qty-input-edited {
+  background: var(--mantine-color-blue-0);
+  border-color: var(--mantine-color-blue-5);
+  font-weight: 600;
+}
+
+.qty-input-invalid {
+  background: var(--mantine-color-red-0);
+  border-color: var(--mantine-color-red-6);
+}
+
+.qty-reset {
+  background: none;
+  border: none;
+  color: var(--mantine-color-blue-7);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  margin-left: 2px;
+  padding: 0 2px;
 }

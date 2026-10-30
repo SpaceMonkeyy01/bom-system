@@ -166,6 +166,8 @@ export interface BomLine {
   total_pkr: number
   total_with_wastage_pkr: number
   error: string | null
+  warning: string | null
+  rate_uom: string | null
 }
 
 export interface Bom {

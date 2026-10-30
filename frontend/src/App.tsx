@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, RequireAuth } from './auth/AuthProvider'
 import { AppLayout } from './components/AppLayout'
+import { CreateBomPage } from './pages/CreateBomPage'
 import { LoginPage } from './pages/LoginPage'
 import { QueuePage } from './pages/QueuePage'
 
@@ -12,6 +13,7 @@ export function App() {
         <Route element={<RequireAuth />}>
           <Route element={<AppLayout />}>
             <Route path="/" element={<QueuePage />} />
+            <Route path="/orders/:orderId/bom" element={<CreateBomPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Route>
