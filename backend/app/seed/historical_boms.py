@@ -104,10 +104,27 @@ def import_block(db: Session, block: Block, order: Order, find, pkr_per_usd: flo
     bom.material_cost_usd = round(grand / pkr_per_usd * 1.2, 2)
     bom.production_cost_usd = round(bom.material_cost_usd / 0.6, 2)
     bom.notes = f"Imported from the Google Sheet ({block.sheet}, row {block.header_row}). Sign type as typed: {block.sign_type}"
-    bom.saved_at = datetime.now(timezone.utc)
-    if isinstance(block.order_date, datetime):
-        bom.saved_at = block.order_date.replace(tzinfo=timezone.utc)
+    bom.saved_at = _imported_date(block, order)
     return bom
+
+
+def _imported_date(block: Block, order: Order) -> datetime:
+    """The sheet's Date cell was typed dd/mm but parsed as mm/dd by Google Sheets whenever the day was <= 12
+    (10/01/2026 -> 10 January). Airtable's order date is authoritative; fall back to the sheet date with
+    day and month swapped when that lands in the tab's month, else the sheet date as-is."""
+    if order.order_date:
+        return datetime(order.order_date.year, order.order_date.month, order.order_date.day, tzinfo=timezone.utc)
+    d = block.order_date
+    if isinstance(d, datetime):
+        if d.month != 10 and d.day <= 12:
+            try:
+                swapped = d.replace(month=d.day, day=d.month)
+                if swapped.month == 10:
+                    return swapped.replace(tzinfo=timezone.utc)
+            except ValueError:
+                pass
+        return d.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc)
 
 
 def import_october_boms(db: Session, path=BOM_SHEET_XLSX, sheets: list[str] | None = None) -> dict:

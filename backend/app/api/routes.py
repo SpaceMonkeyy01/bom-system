@@ -125,7 +125,7 @@ def list_orders(q: str = "", needs_bom: bool | None = None, limit: int = 200, db
         stmt = stmt.where(or_(Order.code.ilike(f"%{q}%"), Order.account_name.ilike(f"%{q}%"), Order.sign_type_raw.ilike(f"%{q}%")))
     has_saved = select(BOM.id).where(BOM.order_id == Order.id, BOM.status.in_(("saved", "written_back", "imported"))).exists()
     if needs_bom is True:
-        stmt = stmt.where(~has_saved)
+        stmt = stmt.where(~has_saved, ~func.coalesce(Order.status, "").ilike("%cancel%"))
     elif needs_bom is False:
         stmt = stmt.where(has_saved)
     stmt = stmt.order_by(Order.dispatch_by.nulls_last(), Order.code).limit(limit)

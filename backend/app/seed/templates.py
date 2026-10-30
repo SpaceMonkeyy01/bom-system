@@ -243,7 +243,7 @@ def seed_sign_types_and_templates(db: Session, path=BOM_CHECK_XLSX) -> dict:
                     uom=p["uom"],
                     input_type=p["input_type"],
                     options=p["options"],
-                    default_value=p["default"],
+                    default_value=p["default"] if p["input_type"] == "select" else None,  # numeric "Input Values" in the sheet were test placeholders
                     default_from_order="finish" if pn.lower() == "finish" else None,
                     required=p["input_type"] == "number",
                 )
