@@ -1,21 +1,24 @@
-import { Alert, Anchor, Button, Center, Group, Loader, Paper, Text } from '@mantine/core'
+import { Alert, Anchor, Button, Center, Group, Loader, NumberInput, Paper, Select, Stack, Table, Text, TextInput } from '@mantine/core'
 import { useDebouncedValue } from '@mantine/hooks'
 import { useQuery } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { api, errorMessage } from '../api/client'
-import type { Bom, Order, SignType, Template } from '../api/types'
+import type { Bom, MaterialSearchResult, Order, SignType, Template } from '../api/types'
 import { useAuth } from '../auth/AuthProvider'
+import { AddMaterial } from '../components/AddMaterial'
 import { BomLinesTable } from '../components/BomLinesTable'
 import { OrderFacts } from '../components/OrderFacts'
 import { ParameterForm } from '../components/ParameterForm'
 import { QtyInput } from '../components/QtyInput'
 import { TemplatePicker } from '../components/TemplatePicker'
-import { type BomDraft, buildRequest, buildRows, type DraftExtra, type ParamValue } from '../lib/bom'
+import { TotalsPanel } from '../components/TotalsPanel'
+import { type BomDraft, buildRequest, buildRows, type DraftExtra, type LineRow, type ParamValue } from '../lib/bom'
 import { fmtPkr } from '../lib/format'
 
 const PREVIEW_DEBOUNCE_MS = 300
 const BAR_HEIGHT = 46
+const DEFAULT_EXTRA_HEAD = 'Misc'
 
 export function CreateBomPage() {
   const orderId = Number(useParams().orderId)
@@ -39,11 +42,17 @@ function CreateBom({ orderId }: { orderId: number }) {
   const [pickedTemplateId, setPickedTemplateId] = useState<number | null>(null)
   const [params, setParams] = useState<Record<string, ParamValue>>({})
   const [overrides, setOverrides] = useState<Record<number, number>>({})
-  const [extras] = useState<DraftExtra[]>([])
+  const [extras, setExtras] = useState<DraftExtra[]>([])
+  const [miscInput, setMiscInput] = useState<string | number | undefined>(undefined)
+  const [boxDimension, setBoxDimension] = useState('')
+  const [shipmentUsd, setShipmentUsd] = useState<string | number>('')
+  const nextExtraKey = useRef(1)
 
   const publishedId = signTypes.data?.find((s) => s.id === order.data?.sign_type_id)?.published_template_id ?? null
   const templateId = publishedId ?? pickedTemplateId
   const signTypeId = pickedSignTypeId !== undefined ? pickedSignTypeId : (order.data?.sign_type_id ?? null)
+  // A cleared box means "use the default", which the server applies.
+  const miscPct = miscInput === undefined || miscInput === '' ? null : Number(miscInput)
 
   const template = useQuery({
     queryKey: ['template', templateId],
@@ -52,8 +61,8 @@ function CreateBom({ orderId }: { orderId: number }) {
   })
 
   const draft = useMemo<BomDraft | null>(
-    () => (templateId === null ? null : { orderId, templateId, params, overrides, extras, miscPct: null }),
-    [orderId, templateId, params, overrides, extras],
+    () => (templateId === null ? null : { orderId, templateId, params, overrides, extras, miscPct }),
+    [orderId, templateId, params, overrides, extras, miscPct],
   )
   const [debounced] = useDebouncedValue(draft, PREVIEW_DEBOUNCE_MS)
 
@@ -83,11 +92,34 @@ function CreateBom({ orderId }: { orderId: number }) {
     [current, extras, overrides, template.data],
   )
 
+  // Offered on added lines until the API lists cost heads (API_REQUESTS.md #3).
+  const costHeads = useMemo(() => {
+    const names = new Set<string>([DEFAULT_EXTRA_HEAD, ...extras.flatMap((e) => (e.cost_tag ? [e.cost_tag] : []))])
+    for (const line of bom?.lines ?? []) if (line.cost_head) names.add(line.cost_head)
+    return [...names].sort()
+  }, [bom, extras])
+
   function chooseTemplate(id: number | null) {
     setPickedTemplateId(id)
     // Overrides are keyed by the old template's line ids, and its inputs don't apply to the new one.
     setParams({})
     setOverrides({})
+  }
+
+  function clearOverride(id: number) {
+    setOverrides((prev) => {
+      const { [id]: _removed, ...rest } = prev
+      return rest
+    })
+  }
+
+  function addExtra(material: MaterialSearchResult) {
+    const key = String(nextExtraKey.current++)
+    setExtras((prev) => [...prev, { key, material_id: material.id, name: material.name, qty: 1, cost_tag: DEFAULT_EXTRA_HEAD, uom: material.uom }])
+  }
+
+  function updateExtra(key: string, change: Partial<DraftExtra>) {
+    setExtras((prev) => prev.map((e) => (e.key === key ? { ...e, ...change } : e)))
   }
 
   if (order.isPending || signTypes.isPending) {
@@ -111,6 +143,49 @@ function CreateBom({ orderId }: { orderId: number }) {
   }
 
   const updating = draft !== debounced || preview.isFetching
+
+  const renderQty = (row: LineRow) => {
+    const { line, extraKey } = row
+    if (extraKey) {
+      const extra = extras.find((e) => e.key === extraKey)
+      return (
+        <>
+          <QtyInput
+            value={extra?.qty ?? line.qty_final}
+            label={`Quantity of ${line.material_name}`}
+            onChange={(qty) => updateExtra(extraKey, { qty })}
+            onClear={() => updateExtra(extraKey, { qty: 0 })}
+          />
+          {/* no formula to reset to; this only keeps the column lined up with the rows that have the button */}
+          <span className="qty-reset" style={{ visibility: 'hidden' }} aria-hidden>
+            ↺
+          </span>
+        </>
+      )
+    }
+    const id = line.component_line_id!
+    return (
+      <>
+        <QtyInput
+          value={line.qty_final}
+          label={`Quantity of ${line.material_name}`}
+          edited={row.overridden}
+          onChange={(qty) => setOverrides((prev) => ({ ...prev, [id]: qty }))}
+          onClear={() => clearOverride(id)}
+        />
+        <button
+          type="button"
+          className="qty-reset"
+          style={{ visibility: row.overridden ? 'visible' : 'hidden' }}
+          title={`Reset to formula: ${line.qty_formula ?? ''} = ${line.qty_auto ?? ''}`}
+          aria-label={`Reset ${line.material_name} to formula`}
+          onClick={() => clearOverride(id)}
+        >
+          ↺
+        </button>
+      </>
+    )
+  }
 
   return (
     <div className="bom-page">
@@ -193,45 +268,72 @@ function CreateBom({ orderId }: { orderId: number }) {
             <Loader />
           </Center>
         ) : (
-          <BomLinesTable
-            rows={rows}
-            stickyOffset={BAR_HEIGHT}
-            renderQty={(row) => {
-              const id = row.line.component_line_id
-              if (id === null) return row.line.qty_final
-              return (
-                <>
-                  <QtyInput
-                    value={row.line.qty_final}
-                    label={`Quantity of ${row.line.material_name}`}
-                    edited={row.overridden}
-                    onChange={(qty) => setOverrides((prev) => ({ ...prev, [id]: qty }))}
-                    onClear={() =>
-                      setOverrides((prev) => {
-                        const { [id]: _removed, ...rest } = prev
-                        return rest
-                      })
-                    }
+          <>
+            <BomLinesTable
+              rows={rows}
+              stickyOffset={BAR_HEIGHT}
+              renderQty={renderQty}
+              renderCostHead={(row) =>
+                row.extraKey ? (
+                  <Select
+                    size="xs"
+                    className="compact-select"
+                    aria-label={`Cost head of ${row.line.material_name}`}
+                    data={costHeads}
+                    value={extras.find((e) => e.key === row.extraKey)?.cost_tag ?? DEFAULT_EXTRA_HEAD}
+                    allowDeselect={false}
+                    onChange={(value) => updateExtra(row.extraKey!, { cost_tag: value })}
                   />
+                ) : (
+                  row.line.cost_head
+                )
+              }
+              renderActions={(row) =>
+                row.extraKey && (
                   <button
                     type="button"
-                    className="qty-reset"
-                    style={{ visibility: row.overridden ? 'visible' : 'hidden' }}
-                    title={`Reset to formula: ${row.line.qty_formula ?? ''} = ${row.line.qty_auto ?? ''}`}
-                    aria-label={`Reset ${row.line.material_name} to formula`}
-                    onClick={() =>
-                      setOverrides((prev) => {
-                        const { [id]: _removed, ...rest } = prev
-                        return rest
-                      })
-                    }
+                    className="line-remove"
+                    aria-label={`Remove ${row.line.material_name}`}
+                    title="Remove this line"
+                    onClick={() => setExtras((prev) => prev.filter((e) => e.key !== row.extraKey))}
                   >
-                    ↺
+                    ×
                   </button>
-                </>
-              )
-            }}
-          />
+                )
+              }
+              footer={
+                <Table.Tr>
+                  <Table.Td colSpan={10}>
+                    <AddMaterial onAdd={addExtra} />
+                  </Table.Td>
+                </Table.Tr>
+              }
+            />
+            <div className="bom-below">
+              <TotalsPanel
+                bom={bom}
+                miscInput={
+                  <NumberInput
+                    size="xs"
+                    w={64}
+                    aria-label="Misc percent"
+                    className="compact-number"
+                    hideControls
+                    allowNegative={false}
+                    value={miscInput ?? bom.misc_pct}
+                    placeholder={String(bom.misc_pct)}
+                    onChange={setMiscInput}
+                  />
+                }
+              />
+              <Paper withBorder p="xs">
+                <Stack gap={6}>
+                  <TextInput size="xs" label="Box dimension" value={boxDimension} onChange={(e) => setBoxDimension(e.currentTarget.value)} />
+                  <NumberInput size="xs" label="Est. shipment (USD)" hideControls allowNegative={false} value={shipmentUsd} onChange={setShipmentUsd} />
+                </Stack>
+              </Paper>
+            </div>
+          </>
         )}
       </section>
     </div>

@@ -33,6 +33,13 @@ body {
   }
 }
 
+/* Too narrow for the whole table, so the wrapper scrolls sideways and the header's offset no longer applies. */
+@media (max-width: 1279px) {
+  .table-wrap-page thead {
+    top: 0 !important;
+  }
+}
+
 .dense-table {
   font-size: 12px;
   line-height: 1.25;
@@ -203,6 +210,60 @@ body {
 .qty-input-invalid {
   background: var(--mantine-color-red-0);
   border-color: var(--mantine-color-red-6);
+}
+
+.compact-select input,
+.compact-number input {
+  font-size: 12px;
+  height: 20px;
+  min-height: 20px;
+}
+
+.compact-select {
+  width: 120px;
+}
+
+.total-row {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  min-height: 19px;
+}
+
+.total-value {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.misc-label {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.line-remove {
+  background: none;
+  border: none;
+  color: var(--mantine-color-red-7);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.bom-below {
+  align-items: start;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  margin-top: 8px;
+}
+
+@media (max-width: 760px) {
+  .bom-below {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .qty-reset {
