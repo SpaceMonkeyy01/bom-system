@@ -41,7 +41,7 @@ export function AppLayout() {
       </main>
       <footer className="app-footer">
         <Text size="xs" c="dimmed">
-          MVP v1.0 by Saad
+          MVP v1.0 by AH & SA
         </Text>
       </footer>
     </>
