@@ -1166,3 +1166,17 @@ a.hero:hover {
 .bom-lines td:nth-child(2) {
   white-space: nowrap;
 }
+
+/* ---------------------------------------------------------------- templates */
+.templates-grid {
+  align-items: start;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) 380px;
+}
+
+@media (max-width: 1100px) {
+  .templates-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

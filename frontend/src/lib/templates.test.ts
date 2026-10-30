@@ -1,6 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import type { Template } from '../api/types'
-import { costTagsPresent, describeLineKey, draftFromTemplate, indexProblems, insertAt, isValidParamName, move, parseOptions, sanitizeParamName, toBody } from './templates'
+import { classifyProblem, costTagsPresent, describeKinds, describeLineKey, draftFromTemplate, indexProblems, insertAt, isValidParamName, move, parseOptions, sanitizeParamName, toBody } from './templates'
+
+describe('flag kinds', () => {
+  it('reads the import notes', () => {
+    expect(classifyProblem('no formula in source')).toBe('typed number')
+    expect(classifyProblem('Unknown input “Foo”')).toBe('unknown input')
+    expect(classifyProblem('Unexpected “face”. Check for a missing + - * or /')).toBe('parse error')
+    expect(classifyProblem('Expected “)”')).toBe('parse error')
+    expect(classifyProblem('check me')).toBe('other')
+  })
+
+  it('summarises them most common first', () => {
+    expect(describeKinds(['no formula in source', 'no formula in source', 'Unknown input “x”'])).toBe('2 typed numbers, 1 unknown input')
+    expect(describeKinds(['check me'])).toBe('1 other problem')
+  })
+})
 
 describe('sanitizeParamName', () => {
   it.each([

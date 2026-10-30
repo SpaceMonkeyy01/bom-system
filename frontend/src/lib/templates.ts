@@ -162,6 +162,34 @@ export function insertAt(value: string, start: number, end: number, text: string
 /** Comma-separated options for a select, trimmed and de-duplicated. */
 export const parseOptions = (text: string) => [...new Set(text.split(',').map((s) => s.trim()).filter(Boolean))]
 
+export type ProblemKind = 'typed number' | 'unknown input' | 'parse error' | 'other'
+
+/** What kind of flag the import left: the note is either "no formula in source" or the formula checker's message. */
+export function classifyProblem(note: string | null | undefined): ProblemKind {
+  const n = (note ?? '').toLowerCase()
+  if (n.includes('no formula')) return 'typed number'
+  if (n.includes('unknown input')) return 'unknown input'
+  if (n.includes('unexpected') || n.includes('expected')) return 'parse error'
+  return 'other'
+}
+
+const KIND_WORDS: Record<ProblemKind, [string, string]> = {
+  'typed number': ['typed number', 'typed numbers'],
+  'unknown input': ['unknown input', 'unknown inputs'],
+  'parse error': ['parse error', 'parse errors'],
+  other: ['other problem', 'other problems'],
+}
+
+/** "3 unknown inputs, 4 typed numbers": the kinds present, most common first. */
+export function describeKinds(notes: (string | null | undefined)[]): string {
+  const counts = new Map<ProblemKind, number>()
+  for (const n of notes) counts.set(classifyProblem(n), (counts.get(classifyProblem(n)) ?? 0) + 1)
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([kind, c]) => `${c} ${KIND_WORDS[kind][c === 1 ? 0 : 1]}`)
+    .join(', ')
+}
+
 /** Line keys in a template diff look like "name|usage|seq"; show them as "name · usage". */
 export function describeLineKey(key: string): string {
   const [name, usage] = key.split('|')
