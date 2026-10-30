@@ -70,10 +70,12 @@ def test_draft_edit_publish_cycle(owner):
     assert r.status_code == 200 and r.json()["problems"]
     assert client.post(f"/api/templates/{d['id']}/publish", headers=h).status_code == 422
 
-    body["lines"][0]["qty_formula"] = "Crunched_Area_SS_ft2 * 1.3"
+    # pick a factor different from whatever the current published version has, so the diff is non-empty on reruns
+    factor = 1.31 if d["lines"][0]["qty_formula"].strip().endswith("1.3") else 1.3
+    body["lines"][0]["qty_formula"] = f"Crunched_Area_SS_ft2 * {factor}"
     assert client.put(f"/api/templates/{d['id']}", json=body, headers=h).json()["problems"] == []
     prev = client.post(f"/api/templates/{d['id']}/preview", json={"parameters": {"Crunched_Area_SS_ft2": 2}}, headers=h)
-    assert prev.status_code == 200 and prev.json()["lines"][0]["qty_final"] == pytest.approx(2.6)
+    assert prev.status_code == 200 and prev.json()["lines"][0]["qty_final"] == pytest.approx(2 * factor)
 
     r = client.post(f"/api/templates/{d['id']}/publish", headers=h)
     assert r.status_code == 200 and r.json()["status"] == "published"
