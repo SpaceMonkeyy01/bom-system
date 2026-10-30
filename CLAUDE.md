@@ -24,6 +24,8 @@ backend/
                            /rate-policies, /categories, /uoms, /suppliers
   app/services/airtable.py  HttpAirtableClient / FakeAirtableClient, pull_orders, write_back, retry_failed
   app/api/sync_routes.py  /sync/airtable/status|pull|upload-csv|retry-failed, /boms/{id}/write-back, /sync/write-backs
+  app/services/reports.py + app/api/report_routes.py  POST /reports/weekly-funds[.xlsx], /reports/by-material[.xlsx]
+                           (filter by pasted order codes, weekly bucket, order-date or saved-date range), GET /reports/weekly-buckets
   app/api/                FastAPI routes + pydantic schemas (prefix /api)
   app/seed/               loaders from the spreadsheets in data/raw (idempotent): python -m app.seed.run
   scripts/regression_october.py  replays all 555 October sheet blocks through the engine (must stay 100%)
@@ -104,4 +106,5 @@ Postgres 14+ is required. Dev credentials in `.env.example` (bom/bom). Never com
    (every 15 min) once a token exists — a small cron/worker on Render calling pull_all.
 4. Inventory UI: stock upload per store, review queue (suggestions → link / create), material detail with
    rate history + add rate (bom/supplier), merge duplicates, rate policy settings.
-5. UOM conversions (e.g. quart → grams by density) so container-priced rates can serve gram lines.
+5. Reports UI: weekly funds (pick bucket or paste codes → table + download xlsx), by-material view.
+6. UOM conversions (e.g. quart → grams by density) so container-priced rates can serve gram lines.
