@@ -6,6 +6,7 @@ import { CreateBomPage } from './pages/CreateBomPage'
 import { LoginPage } from './pages/LoginPage'
 import { OrderPage } from './pages/OrderPage'
 import { QueuePage } from './pages/QueuePage'
+import { TemplateEditorPage } from './pages/TemplateEditorPage'
 import { TemplatesPage } from './pages/TemplatesPage'
 
 export function App() {
@@ -20,6 +21,7 @@ export function App() {
             <Route path="/orders/:orderId/bom" element={<CreateBomPage />} />
             <Route path="/boms/:bomId" element={<BomDetailPage />} />
             <Route path="/templates" element={<TemplatesPage />} />
+            <Route path="/templates/:templateId" element={<TemplateEditorPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Route>
