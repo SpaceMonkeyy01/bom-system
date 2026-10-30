@@ -66,6 +66,17 @@ export interface RequestOptions {
 }
 
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const res = await send(path, options)
+  if (res.status === 204) return undefined as T
+  return (await res.json()) as T
+}
+
+/** For files. Every API route needs the token, so these can't simply be an <img src> or <a href>. */
+export async function apiBlob(path: string, options: RequestOptions = {}): Promise<Blob> {
+  return (await send(path, options)).blob()
+}
+
+async function send(path: string, options: RequestOptions): Promise<Response> {
   const { method, query, json, form, signal, skipAuthRedirect } = options
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(query ?? {})) {
@@ -94,12 +105,11 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   if (res.status === 401 && !skipAuthRedirect) {
     clearToken()
     // The page is about to unload: stay pending so nothing re-renders into an error or a second redirect.
-    if (redirectToLogin()) return new Promise<T>(() => {})
+    if (redirectToLogin()) return new Promise<Response>(() => {})
   }
   if (!res.ok) {
     const data = await res.json().catch(() => null)
     throw new ApiError(res.status, data?.detail ?? null)
   }
-  if (res.status === 204) return undefined as T
-  return (await res.json()) as T
+  return res
 }

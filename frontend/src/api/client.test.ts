@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { api, ApiError, clearToken, errorMessage, getToken, safeNext, setToken } from './client'
+import { api, ApiError, apiBlob, clearToken, errorMessage, getToken, safeNext, setToken } from './client'
 
 const assign = vi.fn()
 const store = new Map<string, string>()
@@ -78,6 +78,20 @@ describe('api', () => {
   it('returns undefined for 204', async () => {
     respond(204, null)
     await expect(api('/auth/password', { json: {} })).resolves.toBeUndefined()
+  })
+
+  it('fetches files with the token, and reports a missing one as an error', async () => {
+    setToken('abc')
+    const fetchMock = vi.fn(async () => new Response(new Uint8Array([1, 2, 3]), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const blob = await apiBlob('/orders/1/images/0', { query: { thumb: true } })
+    expect(blob.size).toBe(3)
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe('/api/orders/1/images/0?thumb=true')
+    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer abc')
+
+    respond(404, { detail: 'Image not available' })
+    await expect(apiBlob('/orders/1/images/9')).rejects.toThrow('Image not available')
   })
 
   it('survives a non-JSON error body', async () => {

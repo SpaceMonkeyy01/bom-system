@@ -1,8 +1,13 @@
-import { Anchor, Badge, Group, Paper, Stack, Text } from '@mantine/core'
+import { Anchor, Badge, Button, Group, Paper, Stack, Text } from '@mantine/core'
 import { useState } from 'react'
-import type { Order, OrderImage } from '../api/types'
+import { apiBlob, errorMessage } from '../api/client'
+import type { Order } from '../api/types'
 import { fmtDate, fmtSize, isOverdue } from '../lib/format'
-import { displayableImages, otherAttachments } from '../lib/images'
+import { type Attachment, displayableImages, otherAttachments } from '../lib/images'
+import { orderImagePath, useOrderImage } from '../lib/useOrderImage'
+
+// Orders carry about 22 attachments, mostly production photos, which would push the parameter form off the screen.
+const IMAGES_SHOWN_FIRST = 3
 
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -17,23 +22,61 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
   )
 }
 
-function FactImage({ image }: { image: OrderImage }) {
-  const [failed, setFailed] = useState(false)
+function FactImage({ orderId, image, onOpen }: { orderId: number; image: Attachment; onOpen: (image: Attachment) => void }) {
+  const { url, failed, markFailed } = useOrderImage(orderId, image.index)
+  if (failed) {
+    return (
+      <span className="fact-image fact-image-broken" title={`${image.filename ?? 'Image'} isn’t available`}>
+        {image.filename ?? 'Image'}
+      </span>
+    )
+  }
   return (
-    <a href={image.url} target="_blank" rel="noreferrer" title={image.filename}>
-      {failed ? (
-        <span className="fact-image fact-image-broken">{image.filename ?? 'Image'}</span>
-      ) : (
-        <img className="fact-image" src={image.url} alt={image.filename ?? ''} loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
-      )}
-    </a>
+    <button type="button" className="fact-image-button" title={image.filename} onClick={() => onOpen(image)}>
+      {url ? <img className="fact-image" src={url} alt={image.filename ?? ''} onError={markFailed} /> : <span className="fact-image fact-image-broken" />}
+    </button>
   )
 }
 
 export function OrderFacts({ order }: { order: Order }) {
+  const [showAll, setShowAll] = useState(false)
+  const [fileError, setFileError] = useState<string | null>(null)
   const images = displayableImages(order.images)
   const files = otherAttachments(order.images)
+  const total = images.length + files.length
   const overdue = isOverdue(order.dispatch_by)
+
+  // Opened from a click so the browser allows the new tab, then pointed at the image once it has loaded.
+  async function openImage(image: Attachment) {
+    setFileError(null)
+    const tab = window.open('', '_blank')
+    try {
+      const blob = await apiBlob(orderImagePath(order.id, image.index))
+      const url = URL.createObjectURL(blob)
+      if (tab) tab.location.href = url
+      setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    } catch (err) {
+      tab?.close()
+      setFileError(errorMessage(err))
+    }
+  }
+
+  async function downloadFile(file: Attachment) {
+    setFileError(null)
+    try {
+      const blob = await apiBlob(orderImagePath(order.id, file.index))
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = file.filename ?? 'attachment'
+      link.click()
+      setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    } catch (err) {
+      setFileError(errorMessage(err))
+    }
+  }
+
+  const shownImages = showAll ? images : images.slice(0, IMAGES_SHOWN_FIRST)
 
   return (
     <Paper withBorder p="xs">
@@ -77,21 +120,36 @@ export function OrderFacts({ order }: { order: Order }) {
             </Text>
           </div>
         )}
-        {images.length > 0 && (
+        {shownImages.length > 0 && (
           <Group gap={4} mt={2}>
-            {images.map((image) => (
-              <FactImage key={image.url} image={image} />
+            {shownImages.map((image) => (
+              <FactImage key={image.index} orderId={order.id} image={image} onOpen={openImage} />
             ))}
           </Group>
         )}
-        {files.length > 0 && (
+        {showAll && files.length > 0 && (
           <Group gap={8}>
             {files.map((file) => (
-              <Anchor key={file.url} href={file.url} target="_blank" rel="noreferrer" size="xs">
+              <Anchor key={file.index} component="button" type="button" size="xs" onClick={() => downloadFile(file)}>
                 {file.filename ?? file.kind ?? 'File'}
               </Anchor>
             ))}
           </Group>
+        )}
+        {fileError && (
+          <Text size="xs" c="red" role="alert">
+            {fileError}
+          </Text>
+        )}
+        {total > shownImages.length && !showAll && (
+          <Button variant="subtle" size="compact-xs" onClick={() => setShowAll(true)}>
+            Show all {total} attachments
+          </Button>
+        )}
+        {showAll && total > IMAGES_SHOWN_FIRST && (
+          <Button variant="subtle" size="compact-xs" onClick={() => setShowAll(false)}>
+            Show fewer
+          </Button>
         )}
       </Stack>
     </Paper>

@@ -1,7 +1,12 @@
 import type { OrderImage } from '../api/types'
 
-const IMAGE_EXT = /\.(png|jpe?g|gif|webp|bmp|avif)$/i
+const IMAGE_EXT = /\.(png|jpe?g|jfif|gif|webp|bmp|avif|svg)$/i
 const FILE_EXT = /\.[a-z0-9]{1,5}$/i
+
+/** An attachment plus its position in order.images, which is how the API addresses it. */
+export interface Attachment extends OrderImage {
+  index: number
+}
 
 const isHttp = (url: string | undefined): url is string => !!url && /^https?:\/\//i.test(url)
 
@@ -23,8 +28,10 @@ export function isDisplayable(img: OrderImage): boolean {
   return img.kind !== 'cdr' && img.kind !== 'pdf'
 }
 
-export const displayableImages = (images: OrderImage[] | null | undefined) => (images ?? []).filter(isDisplayable)
+const withIndex = (images: OrderImage[] | null | undefined): Attachment[] => (images ?? []).map((img, index) => ({ ...img, index }))
 
-/** Everything else worth linking to, e.g. the CDR design file. */
+export const displayableImages = (images: OrderImage[] | null | undefined) => withIndex(images).filter(isDisplayable)
+
+/** Everything else worth offering, e.g. the CDR design file. */
 export const otherAttachments = (images: OrderImage[] | null | undefined) =>
-  (images ?? []).filter((img) => isHttp(img.url) && !isDisplayable(img))
+  withIndex(images).filter((img) => isHttp(img.url) && !isDisplayable(img))

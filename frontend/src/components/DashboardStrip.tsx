@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '../api/client'
 import type { DashboardSummary } from '../api/types'
 import { fmtNum } from '../lib/format'
+import { ordersQuery } from '../lib/orders'
 
 function Card({ label, value, color }: { label: string; value: number; color?: string }) {
   return (
@@ -23,13 +24,15 @@ export function DashboardStrip() {
     queryKey: ['dashboard'],
     queryFn: ({ signal }) => api<DashboardSummary>('/dashboard/summary', { signal }),
   })
+  // The summary's own count includes orders already done in Airtable, so it wouldn't match the queue (API_REQUESTS.md #1).
+  const awaiting = useQuery(ordersQuery('needs_bom')).data?.length
   if (!data) return null
 
   const buckets = Object.entries(data.weekly_buckets).sort((a, b) => a[0].localeCompare(b[0]))
 
   return (
     <Group gap="xs" mb="xs" align="stretch" className="stat-strip" aria-label="Summary">
-      <Card label="Awaiting BOM" value={data.orders_awaiting_bom} color={data.orders_awaiting_bom ? 'orange.8' : undefined} />
+      {awaiting !== undefined && <Card label="Awaiting BOM" value={awaiting} color={awaiting ? 'orange.8' : undefined} />}
       <Card label="With BOM" value={data.orders_with_bom} />
       <Card label="All orders" value={data.orders} />
       <Card label="Unmapped sign type" value={data.orders_unmapped_sign_type} color={data.orders_unmapped_sign_type ? 'red.8' : undefined} />

@@ -3,34 +3,22 @@ import { useDebouncedValue } from '@mantine/hooks'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { api, errorMessage } from '../api/client'
+import { errorMessage } from '../api/client'
 import type { Order } from '../api/types'
 import { useAuth } from '../auth/AuthProvider'
 import { DashboardStrip } from '../components/DashboardStrip'
 import { OrderThumb } from '../components/OrderThumb'
 import { fmtDate, fmtSize, isOverdue } from '../lib/format'
-
-// Well above the default of 200: the API applies its limit before needs_bom (see API_REQUESTS.md #1).
-const QUEUE_LIMIT = 2000
-
-type Scope = 'needs_bom' | 'all'
+import { ordersQuery, type OrderScope } from '../lib/orders'
 
 export function QueuePage() {
   const navigate = useNavigate()
   const { canWrite } = useAuth()
   const [search, setSearch] = useState('')
-  const [scope, setScope] = useState<Scope>('needs_bom')
+  const [scope, setScope] = useState<OrderScope>('needs_bom')
   const [q] = useDebouncedValue(search.trim(), 250)
 
-  const orders = useQuery({
-    queryKey: ['orders', { scope, q }],
-    queryFn: ({ signal }) =>
-      api<Order[]>('/orders', {
-        query: { needs_bom: scope === 'needs_bom' ? true : undefined, q, limit: QUEUE_LIMIT },
-        signal,
-      }),
-    placeholderData: keepPreviousData,
-  })
+  const orders = useQuery({ ...ordersQuery(scope, q), placeholderData: keepPreviousData })
 
   // Writers go straight to Create BOM; an order that already has a BOM opens on its versions first.
   const orderPath = (o: Order) => (canWrite && o.bom_count === 0 ? `/orders/${o.id}/bom` : `/orders/${o.id}`)
@@ -50,7 +38,7 @@ export function QueuePage() {
         <SegmentedControl
           size="xs"
           value={scope}
-          onChange={(v) => setScope(v as Scope)}
+          onChange={(v) => setScope(v as OrderScope)}
           data={[
             { value: 'needs_bom', label: 'Needs BOM' },
             { value: 'all', label: 'All orders' },
@@ -86,7 +74,7 @@ export function QueuePage() {
           <Table className="dense-table" highlightOnHover stickyHeader>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th w={44} aria-label="Image" />
+                <Table.Th w={36} aria-label="Image" />
                 <Table.Th>Code</Table.Th>
                 <Table.Th>Account</Table.Th>
                 <Table.Th>Sign type</Table.Th>
@@ -101,7 +89,7 @@ export function QueuePage() {
               {orders.data.map((o) => (
                 <Table.Tr key={o.id} className="clickable" onClick={() => navigate(orderPath(o))}>
                   <Table.Td>
-                    <OrderThumb images={o.images} />
+                    <OrderThumb orderId={o.id} images={o.images} />
                   </Table.Td>
                   <Table.Td className="nowrap">
                     <Anchor component={Link} to={orderPath(o)} size="xs" fw={600} onClick={(e) => e.stopPropagation()}>

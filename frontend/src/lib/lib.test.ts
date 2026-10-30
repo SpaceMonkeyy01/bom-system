@@ -38,9 +38,19 @@ describe('images', () => {
   const pdf = { kind: 'pdf', filename: 'spec.pdf', url: 'https://x.test/b' }
   const png = { kind: 'design', filename: 'face.PNG', url: 'https://x.test/c' }
 
-  it('skips CDR and PDF files to find the first real image', () => {
-    expect(displayableImages([cdr, pdf, png])[0]).toBe(png)
-    expect(otherAttachments([cdr, pdf, png])).toEqual([cdr, pdf])
+  it('skips CDR and PDF files to find the first real image, keeping its position for the API', () => {
+    expect(displayableImages([cdr, pdf, png])[0]).toEqual({ ...png, index: 2 })
+    expect(otherAttachments([cdr, pdf, png])).toEqual([
+      { ...cdr, index: 0 },
+      { ...pdf, index: 1 },
+    ])
+  })
+
+  it('recognises the image types real orders use, but not videos', () => {
+    for (const filename of ['a.jfif', 'a.svg', 'a.avif', 'a.webp', 'a.jpeg']) {
+      expect(isDisplayable({ kind: 'photo', filename, url: 'https://x.test/a' })).toBe(true)
+    }
+    expect(isDisplayable({ kind: 'photo', filename: 'clip.mp4', url: 'https://x.test/a' })).toBe(false)
   })
 
   it('goes by the file type even if the kind says design', () => {

@@ -132,8 +132,25 @@ body {
   justify-content: space-between;
 }
 
+.fact > :first-child {
+  white-space: nowrap;
+}
+
 .fact > :last-child {
   text-align: right;
+}
+
+.param-default input {
+  color: var(--mantine-color-orange-8);
+  font-style: italic;
+}
+
+.fact-image-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: block;
+  padding: 0;
 }
 
 .fact-notes {
