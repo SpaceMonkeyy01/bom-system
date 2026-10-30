@@ -190,3 +190,30 @@ def cost_tag_for_category(path: str | None, name: str | None = None) -> str:
     if "pvd" in n:
         return "PVD Coating"
     return "Misc"
+
+
+GENERIC_CONVERSIONS = [  # (from, to, factor): qty_to = qty_from * factor
+    ("Gallon", "Liter", 3.78541),
+    ("Quarter", "Liter", 0.946353),
+    ("Gallon", "Quarter", 4.0),
+    ("Kg", "Gram", 1000.0),
+    ("Meter", "Feet", 3.28084),
+    ("Feet", "Inch", 12.0),
+    ("Meter", "Inch", 39.3701),
+]
+
+
+def ensure_conversions(db: Session) -> int:
+    from app.models import UOMConversion
+
+    uoms = {u.code: u for u in db.scalars(select(UOM))}
+    n = 0
+    for f, t, k in GENERIC_CONVERSIONS:
+        if f not in uoms or t not in uoms:
+            continue
+        exists = db.scalar(select(UOMConversion).where(UOMConversion.from_uom_id == uoms[f].id, UOMConversion.to_uom_id == uoms[t].id, UOMConversion.material_id.is_(None)))
+        if not exists:
+            db.add(UOMConversion(from_uom_id=uoms[f].id, to_uom_id=uoms[t].id, factor=k, note="generic"))
+            n += 1
+    db.flush()
+    return n

@@ -241,6 +241,20 @@ class RatePolicy(Base):
     __table_args__ = (UniqueConstraint("scope", "scope_id", name="uq_rate_policy_scope"),)
 
 
+class UOMConversion(Base):
+    """factor such that  qty_in_to_uom = qty_in_from_uom * factor.
+    material_id null = generic (Gallon -> Liter 3.785); set = material-specific (a paint's quart -> grams via density)."""
+
+    __tablename__ = "uom_conversions"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    from_uom_id: Mapped[int] = mapped_column(ForeignKey("uoms.id"))
+    to_uom_id: Mapped[int] = mapped_column(ForeignKey("uoms.id"))
+    factor: Mapped[float] = mapped_column(Numeric(18, 8))
+    material_id: Mapped[int | None] = mapped_column(ForeignKey("materials.id"), index=True)
+    note: Mapped[str | None] = mapped_column(String(255))
+    __table_args__ = (UniqueConstraint("from_uom_id", "to_uom_id", "material_id", name="uq_uom_conv"),)
+
+
 class CostHead(Base):
     """The report columns (Metal, Acrylic, LEDs, Paint, Power Supply, Packaging, Misc, UV, ...)."""
 

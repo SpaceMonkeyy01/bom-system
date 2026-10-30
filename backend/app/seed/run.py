@@ -7,7 +7,7 @@ import json
 import time
 
 from app.db import SessionLocal
-from app.seed.common import ensure_cost_heads, ensure_default_rate_policy, ensure_uoms
+from app.seed.common import ensure_conversions, ensure_cost_heads, ensure_default_rate_policy, ensure_uoms
 from app.seed.materials import seed_materials, seed_suppliers
 from app.seed.orders import seed_orders
 from app.seed.rates_stock import seed_bom_rates, seed_stock
@@ -35,6 +35,7 @@ def main() -> None:
         ensure_uoms(db)
         ensure_cost_heads(db)
         ensure_default_rate_policy(db)
+        ensure_conversions(db)
         db.commit()
         for name in steps:
             t0 = time.time()

@@ -20,6 +20,7 @@ from .core import (  # noqa: F401
     StockSnapshot,
     Supplier,
     UOM,
+    UOMConversion,
     User,
 )
 from .orders import BOM, BOMLine, Order, WriteBack  # noqa: F401

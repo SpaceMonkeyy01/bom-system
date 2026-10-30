@@ -10,7 +10,7 @@ from app.models import BOM, CostHead, Material, Order, SignType, Template
 from app.seed.common import cost_tag_for_category
 from app.models import User
 from app.services.auth import current_user, require
-from app.services.bom import BOMRequest, ExtraLine, build_bom, save_bom
+from app.services.bom import BOMRequest, ExtraLine, build_bom, diff_boms, rates_changed_since, recalculate, save_bom
 from app.services.rates import RateResolver
 
 # every route needs a signed-in user; writes additionally need a permission
@@ -212,6 +212,59 @@ def get_bom(bom_id: int, db: Session = Depends(get_session)):
     if not b:
         raise HTTPException(404, "BOM not found")
     return _bom_out(b)
+
+
+@router.get("/boms/{bom_id}/rate-changes")
+def bom_rate_changes(bom_id: int, db: Session = Depends(get_session)):
+    """Lines whose current rate differs from the one frozen on this BOM ("rates changed since save")."""
+    b = db.get(BOM, bom_id)
+    if not b:
+        raise HTTPException(404, "BOM not found")
+    changes = rates_changed_since(db, b)
+    return {"bom_id": b.id, "changed_lines": changes, "count": len(changes)}
+
+
+@router.post("/boms/{bom_id}/recalculate", response_model=dict)
+def recalc_preview(bom_id: int, use_published_template: bool = True, _: User = Depends(require("bom:write")), db: Session = Depends(get_session)):
+    """Preview what this BOM would cost today (current rates, optionally the current published template)."""
+    b = db.get(BOM, bom_id)
+    if not b:
+        raise HTTPException(404, "BOM not found")
+    try:
+        new, diff = recalculate(db, b, use_published_template)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    new.order = b.order
+    out = {"preview": _bom_out(new).model_dump(), "diff": diff}
+    db.expunge_all()
+    return out
+
+
+@router.post("/boms/{bom_id}/recalculate/save", response_model=S.BOMOut, status_code=201)
+def recalc_save(bom_id: int, use_published_template: bool = True, user: User = Depends(require("bom:write")), db: Session = Depends(get_session)):
+    """Save the recalculated BOM as the order's next version (the old one is kept)."""
+    b = db.get(BOM, bom_id)
+    if not b:
+        raise HTTPException(404, "BOM not found")
+    try:
+        new, _ = recalculate(db, b, use_published_template)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    if any(ln.error for ln in new.lines):
+        raise HTTPException(422, {"message": "A formula has a problem in the current template", "lines": [(ln.material_name, ln.error) for ln in new.lines if ln.error]})
+    new.notes = (new.notes or "") + f" [recalculated from v{b.version}]"
+    save_bom(db, new, user_id=user.id)
+    db.commit()
+    db.refresh(new)
+    return _bom_out(new)
+
+
+@router.get("/boms/{a_id}/diff/{b_id}")
+def bom_diff(a_id: int, b_id: int, db: Session = Depends(get_session)):
+    a, b = db.get(BOM, a_id), db.get(BOM, b_id)
+    if not a or not b:
+        raise HTTPException(404, "BOM not found")
+    return diff_boms(a, b)
 
 
 @router.get("/dashboard/summary")

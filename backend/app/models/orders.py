@@ -114,6 +114,7 @@ class BOMLine(Base):
     rate_uom: Mapped[str | None] = mapped_column(String(20))
 
     bom: Mapped[BOM] = relationship(back_populates="lines")
+    material = relationship("Material")
 
 
 class WriteBack(Base):

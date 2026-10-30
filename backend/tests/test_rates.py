@@ -100,3 +100,34 @@ def test_category_policy_walks_up_the_tree(db):
     db.expire_all()
     r = RateResolver(db, date(2026, 10, 30)).resolve(m)
     assert r.rate == 9 and r.policy_scope == "category"
+
+
+def test_conversion_turns_a_per_quart_rate_into_per_gram(db):
+    from app.models import UOM, UOMConversion
+
+    gram = UOM(code="Gram", name="Gram", aliases=[])
+    quart = UOM(code="Quarter", name="Quarter", aliases=[])
+    db.add_all([gram, quart])
+    db.flush()
+    m = _material(db, "Nexa Black (conv)", uom_id=quart.id)
+    # only a per-quart supplier rate exists: 9000 PKR per quart
+    sup = Supplier(name="Conv Supplier")
+    db.add(sup)
+    db.flush()
+    db.add(MaterialRate(material=m, source=RateSource.supplier, supplier_id=sup.id, rate=9000, uom_id=quart.id, effective_from=date(2026, 10, 1)))
+    db.add(RatePolicy(scope="material", scope_id=m.id, preferred_source=RateSource.supplier, fallback_order=["bom"], staleness_days=60))
+    db.flush()
+    # no conversion yet -> mismatch flagged, rate used as-is
+    r = RateResolver(db, date(2026, 10, 30)).resolve(m, uom_id=gram.id)
+    assert r.uom_mismatch and r.rate == 9000
+    # 1 quart of this paint weighs 1000 g (material-specific density)
+    db.add(UOMConversion(from_uom_id=quart.id, to_uom_id=gram.id, factor=1000, material_id=m.id, note="density"))
+    db.flush()
+    r = RateResolver(db, date(2026, 10, 30)).resolve(m, uom_id=gram.id)
+    assert not r.uom_mismatch and r.rate == pytest.approx(9.0) and r.uom == "Gram" and r.converted_from == "Quarter"
+    # a rate already in grams is preferred over converting
+    db.add(MaterialRate(material=m, source=RateSource.bom, rate=8.5, uom_id=gram.id, effective_from=date(2026, 10, 2)))
+    db.add(MaterialRate(material=m, source=RateSource.supplier, supplier_id=sup.id, rate=8.7, uom_id=gram.id, effective_from=date(2026, 10, 3)))
+    db.flush()
+    r = RateResolver(db, date(2026, 10, 30)).resolve(m, uom_id=gram.id)
+    assert r.rate == 8.7 and r.converted_from is None

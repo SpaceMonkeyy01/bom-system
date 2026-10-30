@@ -16,7 +16,9 @@ backend/
   app/engine/formula.py   formula language (tokenizer → parser → evaluator, QTY()/COST() cross-line refs)
   app/models/             SQLAlchemy models: core (materials, categories, rates, stock), templates, orders/BOMs
   app/services/rates.py   RateResolver — picks a rate per material via RatePolicy (global/category/material)
-  app/services/bom.py     build_bom()/save_bom(): order + template + params → frozen, versioned BOM
+  app/services/bom.py     build_bom()/save_bom(): order + template + params → frozen, versioned BOM;
+                          recalculate()/diff_boms()/rates_changed_since() behind GET /boms/{id}/rate-changes,
+                          POST /boms/{id}/recalculate[/save], GET /boms/{a}/diff/{b}
   app/services/templates.py  draft/validate/preview/publish/diff for template versions
   app/services/auth.py    JWT, argon2, PERMISSIONS and require(); app/api/auth_routes.py
   app/services/inventory.py  iFlow file import, review queue (link/create), add rates, merge materials
@@ -60,8 +62,9 @@ Postgres 14+ is required. Dev credentials in `.env.example` (bom/bom). Never com
 - Materials have app ids; external ids are `MaterialExternalKey(system, store, external_id)`. Never key on
   a bare iFlow id — BS and NS reuse numbers.
 - Rates are never overwritten (`MaterialRate` rows accumulate); BOM lines freeze rate, source and date.
-- Rates carry a UOM. The resolver prefers a rate in the template line's unit; a line whose only rate is in another
-  unit gets a `warning` (not an error). Paint lines are in Gram (the recipes compute grams) even though Odoo
+- Rates carry a UOM. The resolver prefers a rate in the template line's unit, then a rate it can convert via
+  `UOMConversion` (generic, e.g. Gallon→Liter, or material-specific, e.g. a paint's Quarter→Gram by density;
+  `/uom-conversions`), and only then falls back with a `warning` (not an error). Paint lines are in Gram (the recipes compute grams) even though Odoo
   stocks paint in quarts/gallons — never "fix" that by changing the line unit to the container.
 - Templates are versioned; publishing never mutates a saved BOM. Flagged lines (`ComponentLine.notes`)
   are the template owner's to-do list from the import.
@@ -111,4 +114,5 @@ Postgres 14+ is required. Dev credentials in `.env.example` (bom/bom). Never com
 4. Inventory UI: stock upload per store, review queue (suggestions → link / create), material detail with
    rate history + add rate (bom/supplier), merge duplicates, rate policy settings.
 5. Reports UI: weekly funds (pick bucket or paste codes → table + download xlsx), by-material view.
-6. UOM conversions (e.g. quart → grams by density) so container-priced rates can serve gram lines.
+6. BOM page: show `GET /boms/{id}/rate-changes` as a "rates changed since save" banner with a Recalculate
+   button (preview diff → save as new version). Inventory UI: UOM conversions editor (material-specific densities).

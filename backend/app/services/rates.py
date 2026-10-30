@@ -19,8 +19,9 @@ class ResolvedRate:
     effective_from: date | None
     stale: bool
     policy_scope: str  # global | category | material
-    uom: str | None = None  # the rate's UOM code
+    uom: str | None = None  # the rate's UOM code (after conversion, the line's unit)
     uom_mismatch: bool = False  # True when no rate exists in the requested UOM and another was used
+    converted_from: str | None = None  # e.g. "Quarter" when a per-quart rate was converted to per-gram
 
 
 def _source_key(src: str) -> tuple[RateSource, str]:
@@ -42,6 +43,7 @@ class RateResolver:
         self.by_category = {p.scope_id: p for p in pols if p.scope == "category"}
         self.by_material = {p.scope_id: p for p in pols if p.scope == "material"}
         self._cache: dict[int, list[MaterialRate]] = {}
+        self._conv_cache: dict[tuple, dict[int, float]] = {}
 
     def policy_for(self, material: Material) -> tuple[RatePolicy | None, str]:
         if material.id in self.by_material:
@@ -71,11 +73,48 @@ class RateResolver:
             r = self._resolve(material, lambda x: x.uom_id == uom_id)
             if r.source != "none":
                 return r
+            # no rate in the line's unit: accept rates we can convert (material-specific first, then generic)
+            convertible = self._conversions_to(uom_id, material.id)
+            r = self._resolve(material, lambda x: x.uom_id in convertible)
+            if r.source != "none":
+                from_code = r.uom
+                r = self._apply_conversion(r, convertible, uom_id)
+                r.converted_from = from_code
+                return r
             r = self._resolve(material, lambda x: True)
             if r.source != "none" and r.uom and self._uom_code(uom_id) != r.uom:
                 r.uom_mismatch = True
             return r
         return self._resolve(material, lambda x: True)
+
+    def _conversions_to(self, to_uom_id: int, material_id: int) -> dict[int, float]:
+        """{from_uom_id: factor} where qty_to = qty_from * factor. A rate per `from` unit becomes rate/factor per `to` unit."""
+        from app.models import UOMConversion
+
+        key = (to_uom_id, material_id)
+        if key not in self._conv_cache:
+            out: dict[int, float] = {}
+            rows = list(self.db.scalars(select(UOMConversion).where(UOMConversion.to_uom_id == to_uom_id, (UOMConversion.material_id == material_id) | UOMConversion.material_id.is_(None))))
+            # generic first, then material-specific overrides
+            for c in sorted(rows, key=lambda c: 0 if c.material_id is None else 1):
+                out[c.from_uom_id] = float(c.factor)
+            # reverse direction of conversions declared the other way round
+            rev = list(self.db.scalars(select(UOMConversion).where(UOMConversion.from_uom_id == to_uom_id, (UOMConversion.material_id == material_id) | UOMConversion.material_id.is_(None))))
+            for c in sorted(rev, key=lambda c: 0 if c.material_id is None else 1):
+                if float(c.factor):
+                    out.setdefault(c.to_uom_id, 1.0 / float(c.factor))
+            self._conv_cache[key] = out
+        return self._conv_cache[key]
+
+    def _apply_conversion(self, r: ResolvedRate, convertible: dict[int, float], to_uom_id: int) -> ResolvedRate:
+        from app.models import UOM
+
+        from_uom = self.db.scalar(select(UOM).where(UOM.code == r.uom))
+        factor = convertible.get(from_uom.id if from_uom else -1)
+        if factor:
+            r.rate = round(r.rate / factor, 6)
+            r.uom = self._uom_code(to_uom_id)
+        return r
 
     def _uom_code(self, uom_id: int | None) -> str | None:
         if uom_id is None:

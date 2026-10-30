@@ -180,7 +180,11 @@ def build_bom(db: Session, req: BOMRequest) -> BOM:
             warning=(
                 f"Rate is per {rr.uom} but the line is in {ln.uom or (ln.material.uom.code if ln.material and ln.material.uom else '?')}; check the unit"
                 if rr and rr.uom_mismatch
-                else ("No rate found for this material" if rr and rr.source == "none" else None)
+                else (
+                    "No rate found for this material"
+                    if rr and rr.source == "none"
+                    else (f"Rate converted from per-{rr.converted_from}" if rr and rr.converted_from else None)
+                )
             ),
         )
         bom.lines.append(bl)
@@ -230,3 +234,66 @@ def save_bom(db: Session, bom: BOM, user_id: int | None = None) -> BOM:
     db.add(bom)
     db.flush()
     return bom
+
+
+# ---------------------------------------------------------------- recalculation
+
+
+def recalculate(db: Session, saved: BOM, use_published_template: bool = True) -> tuple[BOM, dict]:
+    """Rebuild a saved BOM with today's rates (and, optionally, the sign type's current published template),
+    keeping the saved parameters, overrides and extra lines. Returns the new in-memory BOM and a diff."""
+    template_id = saved.template_id
+    if use_published_template and saved.order.sign_type_id:
+        pub = db.scalar(select(Template).where(Template.sign_type_id == saved.order.sign_type_id, Template.status == "published"))
+        if pub:
+            template_id = pub.id
+    overrides = {ln.component_line_id: float(ln.qty_final) for ln in saved.lines if ln.component_line_id and ln.qty_auto is not None and float(ln.qty_final) != float(ln.qty_auto)}
+    notes = {ln.component_line_id: ln.override_note for ln in saved.lines if ln.component_line_id and ln.override_note}
+    extras = [ExtraLine(ln.material_id, ln.material_name, float(ln.qty_final), None if ln.material_id else float(ln.rate), ln.cost_tag, ln.uom, ln.override_note) for ln in saved.lines if ln.component_line_id is None]
+    if template_id != saved.template_id:
+        overrides, notes = {}, {}  # line ids belong to the old version; overrides can't be carried across
+    req = BOMRequest(order_id=saved.order_id, template_id=template_id, parameters=dict(saved.parameters or {}), overrides=overrides, override_notes=notes, extras=extras, misc_pct=float(saved.misc_pct), box_dimension=saved.box_dimension, est_shipment_cost_usd=float(saved.est_shipment_cost_usd) if saved.est_shipment_cost_usd is not None else None, notes=saved.notes)
+    new = build_bom(db, req)
+    return new, diff_boms(saved, new)
+
+
+def diff_boms(a: BOM, b: BOM) -> dict:
+    """Line-level comparison keyed by material name + usage (works across template versions and imports)."""
+
+    def key(ln: BOMLine):
+        return f"{ln.material_name}|{ln.usage or ''}"
+
+    la = {key(ln): ln for ln in a.lines}
+    lb = {key(ln): ln for ln in b.lines}
+    changed, added, removed = [], [], []
+    for k in lb.keys() - la.keys():
+        added.append({"line": k, "qty": float(lb[k].qty_final), "rate": float(lb[k].rate), "total": float(lb[k].total_with_wastage_pkr)})
+    for k in la.keys() - lb.keys():
+        removed.append({"line": k, "qty": float(la[k].qty_final), "rate": float(la[k].rate), "total": float(la[k].total_with_wastage_pkr)})
+    for k in la.keys() & lb.keys():
+        x, y = la[k], lb[k]
+        # frozen quantities are stored to 4 dp and rates to 4 dp; compare at that precision
+        if round(float(x.qty_final), 4) != round(float(y.qty_final), 4) or round(float(x.rate), 4) != round(float(y.rate), 4) or abs(float(x.total_with_wastage_pkr) - float(y.total_with_wastage_pkr)) >= 0.01:
+            changed.append({"line": k, "qty": [float(x.qty_final), float(y.qty_final)], "rate": [float(x.rate), float(y.rate)], "rate_source": [x.rate_source, y.rate_source], "total": [float(x.total_with_wastage_pkr), float(y.total_with_wastage_pkr)]})
+    return {
+        "template_changed": a.template_id != b.template_id,
+        "grand_total": [float(a.grand_total_pkr), float(b.grand_total_pkr)],
+        "delta_pkr": round(float(b.grand_total_pkr) - float(a.grand_total_pkr), 2),
+        "changed": sorted(changed, key=lambda c: -abs(c["total"][1] - c["total"][0])),
+        "added": added,
+        "removed": removed,
+    }
+
+
+def rates_changed_since(db: Session, saved: BOM) -> list[dict]:
+    """Cheap check for the BOM page: lines whose current rate differs from the frozen one."""
+    resolver = RateResolver(db)
+    out = []
+    for ln in saved.lines:
+        if not ln.material_id or ln.rate_source in ("formula", "manual", "sheet") or not float(ln.qty_final):
+            continue  # only lines that actually cost something on this BOM
+        uom_id = db.scalar(select(UOM.id).where(UOM.code == ln.uom)) if ln.uom else None
+        rr = resolver.resolve(ln.material, uom_id)
+        if rr.source != "none" and abs(rr.rate - float(ln.rate)) > 1e-6:
+            out.append({"line": ln.material_name, "frozen": float(ln.rate), "current": rr.rate, "source": rr.source})
+    return out

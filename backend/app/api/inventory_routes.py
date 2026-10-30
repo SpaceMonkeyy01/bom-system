@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_session
-from app.models import Category, Material, MaterialRate, RatePolicy, StockLine, StockSnapshot, Supplier, UOM, User
+from app.models import Category, Material, MaterialRate, RatePolicy, StockLine, StockSnapshot, Supplier, UOM, UOMConversion, User
 from app.models.core import RateSource
 from app.services.auth import current_user, require
 from app.services.inventory import add_rate, create_material_from_line, import_stock_file, link_line, merge_materials, suggest_matches, unmatched_lines
@@ -291,3 +291,49 @@ def update_supplier(supplier_id: int, body: SupplierIn, _: User = Depends(requir
         setattr(s, k, v)
     db.commit()
     return {"ok": True}
+
+
+# ---------------------------------------------------------------- UOM conversions
+
+
+class ConversionIn(BaseModel):
+    from_uom: str
+    to_uom: str
+    factor: float = Field(gt=0, description="quantity in to_uom = quantity in from_uom x factor")
+    material_id: int | None = None
+    note: str | None = None
+
+
+@router.get("/uom-conversions")
+def list_conversions(material_id: int | None = None, db: Session = Depends(get_session)):
+    stmt = select(UOMConversion)
+    if material_id is not None:
+        stmt = stmt.where((UOMConversion.material_id == material_id) | UOMConversion.material_id.is_(None))
+    out = []
+    for c in db.scalars(stmt):
+        out.append({"id": c.id, "from_uom": db.get(UOM, c.from_uom_id).code, "to_uom": db.get(UOM, c.to_uom_id).code, "factor": float(c.factor), "material_id": c.material_id, "note": c.note})
+    return out
+
+
+@router.put("/uom-conversions")
+def upsert_conversion(body: ConversionIn, _: User = Depends(require("inventory:write")), db: Session = Depends(get_session)):
+    f, t = db.scalar(select(UOM).where(UOM.code == body.from_uom)), db.scalar(select(UOM).where(UOM.code == body.to_uom))
+    if not f or not t:
+        raise HTTPException(400, "Unknown UOM code")
+    if f.id == t.id:
+        raise HTTPException(400, "from and to are the same unit")
+    c = db.scalar(select(UOMConversion).where(UOMConversion.from_uom_id == f.id, UOMConversion.to_uom_id == t.id, UOMConversion.material_id.is_(None) if body.material_id is None else UOMConversion.material_id == body.material_id))
+    if not c:
+        c = UOMConversion(from_uom_id=f.id, to_uom_id=t.id, material_id=body.material_id)
+        db.add(c)
+    c.factor, c.note = body.factor, body.note
+    db.commit()
+    return {"id": c.id}
+
+
+@router.delete("/uom-conversions/{conv_id}", status_code=204)
+def delete_conversion(conv_id: int, _: User = Depends(require("inventory:write")), db: Session = Depends(get_session)):
+    c = db.get(UOMConversion, conv_id)
+    if c:
+        db.delete(c)
+        db.commit()
