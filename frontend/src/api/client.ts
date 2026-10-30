@@ -56,7 +56,7 @@ function redirectToLogin(): boolean {
 }
 
 export interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   query?: Record<string, string | number | boolean | null | undefined>
   json?: unknown
   form?: Record<string, string>

@@ -5,14 +5,17 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { api, clearToken, errorMessage, getToken, setToken } from '../api/client'
 import type { Role, TokenOut, User } from '../api/types'
 
-// Mirrors PERMISSIONS["bom:write"] in backend/app/services/auth.py. The API enforces it; this only hides buttons.
+// Mirrors PERMISSIONS in backend/app/services/auth.py. The API enforces them; this only hides buttons.
 const BOM_WRITE_ROLES: Role[] = ['admin', 'template_owner', 'bom_editor']
+const TEMPLATE_WRITE_ROLES: Role[] = ['admin', 'template_owner']
 
 export const canWriteBom = (role: Role | undefined) => !!role && BOM_WRITE_ROLES.includes(role)
+export const canWriteTemplates = (role: Role | undefined) => !!role && TEMPLATE_WRITE_ROLES.includes(role)
 
 interface AuthValue {
   user: User | undefined
   canWrite: boolean
+  canEditTemplates: boolean
   login: (email: string, password: string) => Promise<void>
   logout: () => void
 }
@@ -46,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [queryClient])
 
   const value = useMemo<AuthValue>(
-    () => ({ user: hasToken ? me.data : undefined, canWrite: canWriteBom(me.data?.role), login, logout }),
+    () => ({ user: hasToken ? me.data : undefined, canWrite: canWriteBom(me.data?.role), canEditTemplates: canWriteTemplates(me.data?.role), login, logout }),
     [hasToken, me.data, login, logout],
   )
 

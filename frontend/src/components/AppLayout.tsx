@@ -1,18 +1,30 @@
 import { Anchor, Badge, Button, Group, Text } from '@mantine/core'
-import { Link, Outlet } from 'react-router-dom'
+import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
+
+const NAV = [
+  { to: '/', label: 'Orders', end: true },
+  { to: '/templates', label: 'Templates', end: false },
+]
 
 export function AppLayout() {
   const { user, logout } = useAuth()
   return (
     <>
       <header className="app-header">
-        <Group justify="space-between" wrap="nowrap">
-          <Anchor component={Link} to="/" fw={700} c="dark" underline="never">
-            BOM System
-          </Anchor>
+        <Group justify="space-between" gap="xs">
+          <Group gap="lg" wrap="nowrap">
+            <Text fw={700}>BOM System</Text>
+            <nav className="app-nav">
+              {NAV.map((n) => (
+                <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => (isActive ? 'active' : undefined)}>
+                  {n.label}
+                </NavLink>
+              ))}
+            </nav>
+          </Group>
           <Group gap="xs" wrap="nowrap">
-            <Text size="sm" truncate>
+            <Text size="sm" truncate visibleFrom="xs">
               {user?.name}
             </Text>
             <Badge variant="light" color="gray" size="sm">
@@ -30,3 +42,5 @@ export function AppLayout() {
     </>
   )
 }
+
+export { Anchor }

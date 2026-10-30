@@ -205,6 +205,125 @@ export interface Bom {
   input_errors: Record<string, string>
 }
 
+// ---------------------------------------------------------------- template editor
+
+export interface ParamEdit {
+  label: string
+  param_name: string
+  uom: string | null
+  input_type: 'number' | 'select'
+  options: string[]
+  default_value: string | null
+  default_from_order: string | null
+  required: boolean
+}
+
+export interface LineEdit {
+  material_id: number | null
+  material_name_hint: string | null
+  qty_formula: string
+  unit_cost_formula: string | null
+  uom: string | null
+  usage: string | null
+  cost_tag: string | null
+  work_centre: string | null
+  wastage_pct: number | null
+  optional: boolean
+  notes: string | null
+}
+
+export interface DraftBody {
+  parameters: ParamEdit[]
+  lines: LineEdit[]
+  notes: string | null
+}
+
+/** where: "param:<n>" | "line:<n>" | "template" */
+export interface Problem {
+  where: string
+  message: string
+}
+
+export interface FlaggedLine {
+  line_id: number
+  seq: number
+  material: string | null
+  formula: string
+  problem: string
+}
+
+export interface FlaggedTemplate {
+  template_id: number
+  sign_type: string
+  version: number
+  status: string
+  flagged: FlaggedLine[]
+}
+
+export interface TemplateDiff {
+  params_added: string[]
+  params_removed: string[]
+  params_changed: string[]
+  lines_added: string[]
+  lines_removed: string[]
+  lines_changed: string[]
+}
+
+export interface UnmappedName {
+  name: string
+  orders: number
+}
+
+export interface Uom {
+  id: number
+  code: string
+  name: string
+}
+
+// ---------------------------------------------------------------- recalculation
+
+export interface RateChange {
+  line: string
+  frozen: number
+  current: number
+  source: string
+}
+
+export interface RateChanges {
+  bom_id: number
+  changed_lines: RateChange[]
+  count: number
+}
+
+export interface BomDiffLine {
+  line: string
+  qty: [number, number]
+  rate: [number, number]
+  rate_source: [string | null, string | null]
+  total: [number, number]
+}
+
+export interface BomDiffEdge {
+  line: string
+  qty: number
+  rate: number
+  total: number
+}
+
+export interface BomDiff {
+  template_changed: boolean
+  grand_total: [number, number]
+  delta_pkr: number
+  changed: BomDiffLine[]
+  added: BomDiffEdge[]
+  removed: BomDiffEdge[]
+}
+
+export interface RecalcResult {
+  preview: Bom
+  diff: BomDiff
+}
+
 export interface DashboardSummary {
   orders: number
   orders_with_bom: number

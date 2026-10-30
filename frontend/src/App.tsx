@@ -6,6 +6,7 @@ import { CreateBomPage } from './pages/CreateBomPage'
 import { LoginPage } from './pages/LoginPage'
 import { OrderPage } from './pages/OrderPage'
 import { QueuePage } from './pages/QueuePage'
+import { TemplatesPage } from './pages/TemplatesPage'
 
 export function App() {
   return (
@@ -18,6 +19,7 @@ export function App() {
             <Route path="/orders/:orderId" element={<OrderPage />} />
             <Route path="/orders/:orderId/bom" element={<CreateBomPage />} />
             <Route path="/boms/:bomId" element={<BomDetailPage />} />
+            <Route path="/templates" element={<TemplatesPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Route>

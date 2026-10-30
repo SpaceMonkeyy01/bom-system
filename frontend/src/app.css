@@ -12,6 +12,238 @@ body {
   padding: 12px 16px;
 }
 
+.app-nav {
+  display: flex;
+  gap: 4px;
+}
+
+.app-nav a {
+  border-radius: var(--mantine-radius-sm);
+  color: var(--mantine-color-gray-7);
+  font-size: 13px;
+  padding: 3px 8px;
+  text-decoration: none;
+}
+
+.app-nav a.active {
+  background: var(--mantine-color-blue-0);
+  color: var(--mantine-color-blue-8);
+  font-weight: 600;
+}
+
+/* Templates */
+.templates-page {
+  align-items: start;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) 420px;
+}
+
+@media (max-width: 1100px) {
+  .templates-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.templates-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.todo-panel {
+  border-color: var(--mantine-color-orange-4);
+}
+
+.todo-item {
+  border-top: 1px solid var(--mantine-color-gray-2);
+  padding-top: 4px;
+}
+
+.todo-lines td {
+  vertical-align: top;
+}
+
+.formula {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.material-picker {
+  width: 260px;
+}
+
+/* Template editor */
+.editor-bar {
+  margin-bottom: 0;
+}
+
+.editor-columns {
+  align-items: start;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 1500px) {
+  .editor-columns {
+    grid-template-columns: minmax(0, 1fr) 520px;
+  }
+}
+
+.editor-main,
+.editor-preview {
+  min-width: 0;
+}
+
+.editor-preview {
+  position: sticky;
+  top: 52px;
+  max-height: calc(100vh - 60px);
+  overflow: auto;
+}
+
+.editor-table-wrap {
+  max-height: none;
+  overflow: auto;
+}
+
+.editor-table td {
+  vertical-align: top;
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
+.editor-table .row-problem td {
+  background: var(--mantine-color-red-0);
+}
+
+.editor-table .row-flagged td:first-child {
+  box-shadow: inset 3px 0 0 var(--mantine-color-orange-5);
+}
+
+.formula-font input,
+.formula-input {
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.formula-input {
+  border: 1px solid var(--mantine-color-gray-4);
+  border-radius: var(--mantine-radius-xs);
+  font-size: 12px;
+  height: 22px;
+  min-width: 260px;
+  padding: 0 5px;
+  width: 100%;
+}
+
+.formula-input-cost {
+  min-width: 150px;
+}
+
+.formula-input:focus,
+.formula-input-active {
+  border-color: var(--mantine-color-blue-6);
+  outline: 1px solid var(--mantine-color-blue-6);
+}
+
+.formula-input:disabled {
+  background: var(--mantine-color-gray-1);
+  color: var(--mantine-color-gray-7);
+}
+
+.input-bad input {
+  border-color: var(--mantine-color-red-6);
+}
+
+.line-flag-note {
+  color: var(--mantine-color-orange-9);
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: var(--mantine-color-blue-7);
+  cursor: pointer;
+  font: inherit;
+  margin-left: 4px;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.row-actions button {
+  background: none;
+  border: none;
+  color: var(--mantine-color-gray-7);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px 3px;
+}
+
+.row-actions button:disabled {
+  color: var(--mantine-color-gray-4);
+  cursor: default;
+}
+
+.row-actions button.danger {
+  color: var(--mantine-color-red-7);
+}
+
+.chips {
+  background: var(--mantine-color-gray-0);
+  border: 1px dashed var(--mantine-color-gray-4);
+  border-radius: var(--mantine-radius-sm);
+  margin-bottom: 6px;
+  padding: 4px 8px;
+}
+
+.chips-idle .chip {
+  opacity: 0.6;
+}
+
+.chip {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 0 7px;
+}
+
+.chip-param {
+  background: var(--mantine-color-blue-1);
+  color: var(--mantine-color-blue-9);
+}
+
+.chip-order {
+  background: var(--mantine-color-gray-2);
+  color: var(--mantine-color-gray-8);
+}
+
+.chip-fn {
+  background: var(--mantine-color-violet-1);
+  color: var(--mantine-color-violet-9);
+}
+
+.chip:hover {
+  border-color: currentColor;
+}
+
+.preview-panel .dense-table {
+  font-size: 11px;
+}
+
+.material-picker-empty input {
+  border-color: var(--mantine-color-red-5);
+}
+
 /* Dense tables: the BOM team reads 25-35 rows at a time. */
 .table-wrap {
   background: var(--mantine-color-white);
