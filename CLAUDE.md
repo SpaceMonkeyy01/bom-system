@@ -33,6 +33,8 @@ backend/
   app/seed/sheet_blocks.py  parser for the sheet's per-order blocks (shared by regression + historical import)
   app/seed/historical_boms.py  October sheet blocks -> BOM(status=imported); 465 orders, totals match Airtable to the rupee
   scripts/regression_october.py  replays all 555 October sheet blocks through the engine (must stay 100%)
+  scripts/cleanup_workbook.py  export the team's cleanup to-do (sheet-only merges, unmapped sign types, price list,
+                           flagged lines, duplicate iFlow ids) as one xlsx; `apply decisions.xlsx [--dry-run]` imports the decisions
   alembic/                migrations (autogenerate from app.models)
   tests/                  pytest (engine tests; add API/service tests alongside)
 data/raw/                 source spreadsheets, git-ignored — ask Saad for them (see data/README.md)
