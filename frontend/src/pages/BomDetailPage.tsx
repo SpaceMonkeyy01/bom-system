@@ -94,7 +94,7 @@ function BomDetail({ bomId }: { bomId: number }) {
       </aside>
 
       <section className="bom-main">
-        <Paper withBorder className="bom-bar" style={{ minHeight: BAR_HEIGHT }}>
+        <Paper withBorder className="bom-bar" data-testid="bom-bar" style={{ minHeight: BAR_HEIGHT }}>
           <Group gap="sm" wrap="nowrap">
             <Anchor component={Link} to={`/orders/${saved.order_id}`} size="sm" fw={700} className="nowrap">
               {saved.order_code}
@@ -141,7 +141,7 @@ function BomDetail({ bomId }: { bomId: number }) {
         )}
         <RateChangesBanner bom={saved} />
 
-        <BomLinesTable rows={rows} stickyOffset={BAR_HEIGHT} />
+        <BomLinesTable rows={rows} meta="Rates frozen at save" />
 
         <div className="bom-below">
           <TotalsPanel bom={saved} />

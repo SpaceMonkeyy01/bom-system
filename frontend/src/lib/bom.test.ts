@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { BomLine, ComponentLine, Parameter } from '../api/types'
-import { buildRequest, buildRows, type DraftExtra, frozenRows, isEdited, isHideable, isUnpriced, missingRequired, parseQty, qtyText, rateWarning } from './bom'
+import { buildRequest, buildRows, type DraftExtra, frozenRows, isEdited, isHideable, isUnpriced, missingRequired, parseQty, qtyText, rateTag, rateWarning, saveChecklist } from './bom'
 
 function line(over: Partial<BomLine> = {}): BomLine {
   return {
@@ -150,6 +150,45 @@ describe('saved BOMs', () => {
       lines: [line({ id: 1, component_line_id: null, qty_auto: 0, qty_final: 0 }), line({ id: 2, component_line_id: null, qty_auto: 3, qty_final: 3 })],
     })
     expect(rows.map(isHideable)).toEqual([true, false])
+  })
+})
+
+describe('rateTag', () => {
+  it('maps sources to tones and words', () => {
+    expect(rateTag(line({ rate_source: 'iflow:BS' }))).toEqual({ tone: 'done', label: 'iFlow · BS' })
+    expect(rateTag(line({ rate_source: 'supplier:Acme Metals' }))).toEqual({ tone: 'info', label: 'Supplier · Acme Metals' })
+    expect(rateTag(line({ rate_source: 'bom', rate_stale: false }))).toEqual({ tone: 'neutral', label: 'BOM' })
+    expect(rateTag(line({ rate_source: 'bom', rate_stale: true, rate_date: '2025-09-01' }))).toEqual({ tone: 'pending', label: 'BOM · stale (Sep 25)' })
+    expect(rateTag(line({ rate_source: 'manual' }))).toEqual({ tone: 'neutral', label: 'Manual' })
+    expect(rateTag(line({ rate_source: 'none' }))).toEqual({ tone: 'missing', label: 'No rate' })
+    expect(rateTag(line({ rate_source: 'sheet' })).label).toBe('Sheet')
+  })
+})
+
+describe('saveChecklist', () => {
+  const p = (label: string, param_name = label) => ({ label, param_name, required: true }) as Parameter
+
+  it('blocks on missing inputs and formula errors, and lists what to check', () => {
+    const r = saveChecklist({
+      missing: [p('Face Area', 'Face_Area')],
+      inputErrors: {},
+      lines: [line({ error: 'bad' }), line({ rate_source: 'none', qty_final: 1 }), line({ rate_stale: true, rate_date: '2025-09-01' }), line({ warning: 'Rate is per Kg' })],
+    })
+    expect(r.blocked).toBe(true)
+    expect(r.items.map((i) => i.tag)).toEqual(['To do', 'To do', 'Check', 'Check', 'Check'])
+    expect(r.items[0]).toEqual({ tag: 'To do', text: 'Fill in Face Area.', params: ['Face_Area'] })
+    expect(r.items[1].text).toMatch(/1 line has a formula error/)
+    expect(r.items.map((i) => i.text)).toContain('1 line has no rate and costs nothing.')
+    expect(r.items.map((i) => i.text)).toContain('1 line uses a stale rate from Sep 25.')
+  })
+
+  it('says what is fine when nothing needs attention', () => {
+    const r = saveChecklist({ missing: [], inputErrors: {}, lines: [line()] })
+    expect(r.blocked).toBe(false)
+    expect(r.items).toEqual([
+      { tag: 'OK', text: 'All units match their rates.' },
+      { tag: 'OK', text: 'All lines priced with current rates.' },
+    ])
   })
 })
 

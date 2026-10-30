@@ -1,4 +1,5 @@
 import type { Bom, BomLine, BomRequest, ComponentLine, Parameter } from '../api/types'
+import type { Tone } from '../theme'
 
 export type ParamValue = string | number
 
@@ -142,6 +143,56 @@ export function missingRequired(parameters: Parameter[], values: Record<string, 
 
 /** Why a line's cost can't be trusted: priced at nothing because there's no rate, though it has a quantity. */
 export const isUnpriced = (line: BomLine) => line.rate_source === 'none' && line.qty_final > 0 && !line.error
+
+/** Rate-source tag per DESIGN.md: iFlow → done, supplier → info, BOM → neutral (pending when stale), manual → neutral. */
+export function rateTag(line: Pick<BomLine, 'rate_source' | 'rate_stale' | 'rate_date'>): { tone: Tone; label: string } {
+  const src = line.rate_source
+  if (!src || src === 'none') return { tone: 'missing', label: 'No rate' }
+  if (src === 'formula') return { tone: 'neutral', label: 'Formula' }
+  if (src === 'manual') return { tone: 'neutral', label: 'Manual' }
+  if (src === 'sheet') return { tone: 'neutral', label: 'Sheet' }
+  if (src.startsWith('iflow')) return { tone: 'done', label: `iFlow${src.includes(':') ? ` · ${src.split(':')[1]}` : ''}` }
+  if (src.startsWith('supplier')) return { tone: 'info', label: `Supplier${src.includes(':') ? ` · ${src.split(':').slice(1).join(':')}` : ''}` }
+  if (src === 'bom') return line.rate_stale ? { tone: 'pending', label: `BOM · stale${line.rate_date ? ` (${monthYear(line.rate_date)})` : ''}` } : { tone: 'neutral', label: 'BOM' }
+  return { tone: 'neutral', label: src }
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const monthYear = (iso: string) => {
+  const [y, m] = iso.slice(0, 10).split('-').map(Number)
+  return y && m ? `${MONTHS[m - 1]} ${String(y).slice(2)}` : iso
+}
+
+export interface CheckItem {
+  tag: 'To do' | 'Check' | 'OK'
+  text: string
+  /** Parameter names to jump to, when the item is about inputs. */
+  params?: string[]
+}
+
+/** The "Before you save" checklist: blockers first, then things worth a look, then what is fine. */
+export function saveChecklist(args: { missing: Parameter[]; inputErrors: Record<string, string>; lines: BomLine[] }): { items: CheckItem[]; blocked: boolean } {
+  const { missing, inputErrors, lines } = args
+  const items: CheckItem[] = []
+  if (missing.length) items.push({ tag: 'To do', text: `Fill in ${missing.map((p) => p.label).join(', ')}.`, params: missing.map((p) => p.param_name) })
+  const badInputs = Object.entries(inputErrors)
+  if (badInputs.length) items.push({ tag: 'To do', text: `Fix ${badInputs.map(([k, v]) => `${k}: ${v}`).join('; ')}.`, params: badInputs.map(([k]) => k) })
+  const errors = lines.filter((l) => l.error).length
+  if (errors) items.push({ tag: 'To do', text: `${errors} line${errors === 1 ? ' has' : 's have'} a formula error. The template needs fixing before this can be saved.` })
+  const blocked = items.length > 0
+
+  const unpriced = lines.filter(isUnpriced).length
+  if (unpriced) items.push({ tag: 'Check', text: `${unpriced} line${unpriced === 1 ? ' has' : 's have'} no rate and cost${unpriced === 1 ? 's' : ''} nothing.` })
+  const mismatched = lines.filter(rateWarning).length
+  if (mismatched) items.push({ tag: 'Check', text: `${mismatched} line${mismatched === 1 ? ' uses' : 's use'} a rate in a different unit.` })
+  else if (lines.length) items.push({ tag: 'OK', text: 'All units match their rates.' })
+  const stale = lines.filter((l) => l.rate_stale && l.rate_source !== 'none' && l.qty_final > 0)
+  if (stale.length) {
+    const oldest = stale.map((l) => l.rate_date).filter((d): d is string => !!d).sort()[0]
+    items.push({ tag: 'Check', text: `${stale.length} line${stale.length === 1 ? ' uses' : 's use'} a stale rate${oldest ? ` from ${monthYear(oldest)}` : ''}.` })
+  } else if (lines.length && !unpriced) items.push({ tag: 'OK', text: 'All lines priced with current rates.' })
+  return { items, blocked }
+}
 
 /** The API's warning, minus "no rate": that case already has its own badge, and repeating it on every line adds noise. */
 export const rateWarning = (line: BomLine) => (line.rate_source === 'none' ? null : line.warning)

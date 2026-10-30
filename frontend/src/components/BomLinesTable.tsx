@@ -1,53 +1,75 @@
-import { Group, Switch, Table, Text, Tooltip } from '@mantine/core'
+import { Checkbox, Title, Tooltip } from '@mantine/core'
 import { type ReactNode, useState } from 'react'
-import { isEdited, isHideable, type LineRow, rateWarning } from '../lib/bom'
+import { isEdited, isHideable, type LineRow, rateTag, rateWarning } from '../lib/bom'
 import { fmtNum, fmtPkr } from '../lib/format'
-import { RateBadge } from './RateBadge'
+import { RateTag } from './ui'
 
 interface Props {
   rows: LineRow[]
+  /** Card title; the lines live in their own bordered section. */
+  title?: string
+  /** Caption after the title, e.g. "Rates frozen at save". */
+  meta?: ReactNode
   /** Editable quantity cell; defaults to the plain number. */
   renderQty?: (row: LineRow) => ReactNode
   /** Editable cost head cell; defaults to the plain name. */
   renderCostHead?: (row: LineRow) => ReactNode
   /** Row actions such as removing an added line. Adds a column when given. */
   renderActions?: (row: LineRow) => ReactNode
-  /** Extra rows after the lines, such as "Add material". */
+  /** Content under the table, inside the card, e.g. "Add material". */
   footer?: ReactNode
-  /** Height of whatever is stuck above the table, so its header stops below it. */
-  stickyOffset?: number
+  compact?: boolean
 }
 
-export function BomLinesTable({ rows, renderQty, renderCostHead, renderActions, footer, stickyOffset }: Props) {
+export function BomLinesTable({ rows, title = 'Lines', meta, renderQty, renderCostHead, renderActions, footer, compact }: Props) {
   const [showZero, setShowZero] = useState(false)
   const hiddenCount = rows.filter(isHideable).length
   const visible = showZero ? rows : rows.filter((r) => !isHideable(r))
+  const withQty = rows.length - hiddenCount
 
   return (
-    <>
-      <div className="table-wrap table-wrap-page">
-        <Table className="dense-table bom-lines" highlightOnHover stickyHeader stickyHeaderOffset={stickyOffset}>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Material</Table.Th>
-              <Table.Th>Usage</Table.Th>
-              <Table.Th className="num">Qty</Table.Th>
-              <Table.Th>UOM</Table.Th>
-              <Table.Th className="num">Rate</Table.Th>
-              <Table.Th>Rate source</Table.Th>
-              <Table.Th className="num">Wastage %</Table.Th>
-              <Table.Th className="num">Total + wastage</Table.Th>
-              <Table.Th>Cost head</Table.Th>
-              {renderActions && <Table.Th w={24} aria-label="Actions" />}
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
+    <section className="card bom-lines" data-testid="lines-card">
+      <div className="card-head">
+        <Title order={2}>{title}</Title>
+        <span className="caption">
+          {meta ? <>{meta} · </> : null}
+          {withQty} with quantity{hiddenCount ? ` · ${hiddenCount} at zero hidden` : ''}
+        </span>
+        <div className="card-head-right">
+          <Checkbox
+            size="xs"
+            checked={showZero}
+            disabled={hiddenCount === 0 && !showZero}
+            onChange={(e) => setShowZero(e.currentTarget.checked)}
+            label={<span className="caption">Show zero-quantity lines ({hiddenCount})</span>}
+          />
+        </div>
+      </div>
+      <div className="table-wrap">
+        <table className={`tbl mantine-Table-table${compact ? ' tbl-dense' : ''}`}>
+          <thead>
+            <tr>
+              <th>Material</th>
+              <th>Usage</th>
+              <th className="num">Qty</th>
+              <th>Unit</th>
+              <th className="num">Rate</th>
+              <th>Rate source</th>
+              <th className="num">Wastage</th>
+              <th className="num">Total</th>
+              <th>Head</th>
+              {renderActions && <th style={{ width: 28 }} aria-label="Actions" />}
+            </tr>
+          </thead>
+          <tbody>
             {visible.map((row) => {
               const { line, pending } = row
+              const tag = rateTag(line)
+              const warning = rateWarning(line)
               return (
-                <Table.Tr key={row.key} className={line.error ? 'row-error' : undefined} data-testid={row.key}>
-                  <Table.Td>
-                    <span className="material-name">{line.material_name}</span>
+                <tr key={row.key} className={line.error ? 'row-error' : undefined} data-testid={row.key}>
+                  <td>
+                    <strong className="material-name">{line.material_name}</strong>
                     {row.flag && (
                       <Tooltip label={row.flag} withinPortal multiline maw={320}>
                         <span className="line-flag" aria-label={`Flagged: ${row.flag}`}>
@@ -55,36 +77,37 @@ export function BomLinesTable({ rows, renderQty, renderCostHead, renderActions, 
                         </span>
                       </Tooltip>
                     )}
+                    {row.extraKey && <div className="caption">Added by you</div>}
                     {line.error && <div className="line-error">{line.error}</div>}
-                    {rateWarning(line) && <div className="line-warning">{rateWarning(line)}</div>}
+                    {warning && <div className="line-warning">{warning}</div>}
                     {line.override_note && !renderQty && <div className="line-note">{line.override_note}</div>}
-                  </Table.Td>
-                  <Table.Td>{line.usage}</Table.Td>
-                  <Table.Td className="num nowrap">{renderQty ? renderQty(row) : <FrozenQty row={row} />}</Table.Td>
-                  <Table.Td>{line.uom}</Table.Td>
-                  <Table.Td className="num">{pending ? '…' : fmtNum(line.rate)}</Table.Td>
-                  <Table.Td>{!pending && <RateBadge source={line.rate_source} stale={line.rate_stale} date={line.rate_date} />}</Table.Td>
-                  <Table.Td className="num">{pending ? '…' : fmtNum(line.wastage_pct)}</Table.Td>
-                  <Table.Td className="num">{pending ? '…' : fmtPkr(line.total_with_wastage_pkr)}</Table.Td>
-                  <Table.Td>{renderCostHead ? renderCostHead(row) : line.cost_head}</Table.Td>
-                  {renderActions && <Table.Td>{renderActions(row)}</Table.Td>}
-                </Table.Tr>
+                  </td>
+                  <td style={{ color: 'var(--slate)' }}>{line.usage}</td>
+                  <td className="num nowrap">{renderQty ? renderQty(row) : <FrozenQty row={row} />}</td>
+                  <td>{line.uom}</td>
+                  <td className="num">{pending ? '…' : fmtNum(line.rate)}</td>
+                  <td>{!pending && <RateTag tone={tag.tone}>{tag.label}</RateTag>}</td>
+                  <td className="num">{pending ? '…' : `${fmtNum(line.wastage_pct)} %`}</td>
+                  <td className="num">
+                    <strong>{pending ? '…' : fmtPkr(line.total_with_wastage_pkr)}</strong>
+                  </td>
+                  <td style={{ color: 'var(--slate)' }}>{renderCostHead ? renderCostHead(row) : line.cost_head}</td>
+                  {renderActions && <td>{renderActions(row)}</td>}
+                </tr>
               )
             })}
-            {footer}
-          </Table.Tbody>
-        </Table>
+            {visible.length === 0 && (
+              <tr>
+                <td colSpan={10} className="caption">
+                  {rows.length ? 'Every line is at zero. Tick “Show zero-quantity lines” to see them.' : 'No lines.'}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
-      <Group justify="flex-end" mt={4}>
-        <Switch
-          size="xs"
-          checked={showZero}
-          onChange={(e) => setShowZero(e.currentTarget.checked)}
-          disabled={hiddenCount === 0}
-          label={<Text size="xs">Show zero-qty lines ({hiddenCount})</Text>}
-        />
-      </Group>
-    </>
+      {footer && <div className="card-foot">{footer}</div>}
+    </section>
   )
 }
 

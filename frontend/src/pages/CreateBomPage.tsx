@@ -1,4 +1,4 @@
-import { Alert, Anchor, Badge, Button, Center, Group, List, Loader, NumberInput, Paper, Select, Stack, Table, Text, TextInput } from '@mantine/core'
+import { Alert, Anchor, Button, Loader, NumberInput, Select, Text, TextInput, Title } from '@mantine/core'
 import { useDebouncedValue } from '@mantine/hooks'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useRef, useState } from 'react'
@@ -8,17 +8,18 @@ import type { Bom, CostHead, MaterialSearchResult, Order, SignType, Template } f
 import { useAuth } from '../auth/AuthProvider'
 import { AddMaterial } from '../components/AddMaterial'
 import { BomLinesTable } from '../components/BomLinesTable'
-import { OrderFacts } from '../components/OrderFacts'
+import { OrderAttachments } from '../components/OrderAttachments'
 import { PageError, PageLoader } from '../components/PageState'
 import { ParameterForm } from '../components/ParameterForm'
 import { QtyInput } from '../components/QtyInput'
 import { TemplatePicker } from '../components/TemplatePicker'
 import { TotalsPanel } from '../components/TotalsPanel'
-import { type BomDraft, buildRequest, buildRows, type DraftExtra, isUnpriced, type LineRow, missingRequired, type ParamValue, rateWarning } from '../lib/bom'
-import { fmtPkr, fmtUsd } from '../lib/format'
+import { PageHeader, RateTag, Section, StatusPill } from '../components/ui'
+import { type BomDraft, buildRequest, buildRows, type DraftExtra, type LineRow, missingRequired, type ParamValue, saveChecklist } from '../lib/bom'
+import { fmtDate, fmtNum, fmtSize } from '../lib/format'
+import { orderStatus } from '../lib/orders'
 
 const PREVIEW_DEBOUNCE_MS = 300
-const BAR_HEIGHT = 46
 const DEFAULT_EXTRA_HEAD = 'Misc'
 
 export function CreateBomPage() {
@@ -32,17 +33,12 @@ export function CreateBomPage() {
 function CreateBom({ orderId }: { orderId: number }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const order = useQuery({
-    queryKey: ['order', orderId],
-    queryFn: ({ signal }) => api<Order>(`/orders/${orderId}`, { signal }),
-  })
-  const signTypes = useQuery({
-    queryKey: ['sign-types'],
-    queryFn: ({ signal }) => api<SignType[]>('/sign-types', { signal }),
-  })
+  const order = useQuery({ queryKey: ['order', orderId], queryFn: ({ signal }) => api<Order>(`/orders/${orderId}`, { signal }) })
+  const signTypes = useQuery({ queryKey: ['sign-types'], queryFn: ({ signal }) => api<SignType[]>('/sign-types', { signal }) })
 
   const [pickedSignTypeId, setPickedSignTypeId] = useState<number | null | undefined>(undefined)
   const [pickedTemplateId, setPickedTemplateId] = useState<number | null>(null)
+  const [changingTemplate, setChangingTemplate] = useState(false)
   const [params, setParams] = useState<Record<string, ParamValue>>({})
   const [overrides, setOverrides] = useState<Record<number, number>>({})
   const [extras, setExtras] = useState<DraftExtra[]>([])
@@ -52,7 +48,8 @@ function CreateBom({ orderId }: { orderId: number }) {
   const nextExtraKey = useRef(1)
 
   const publishedId = signTypes.data?.find((s) => s.id === order.data?.sign_type_id)?.published_template_id ?? null
-  const templateId = publishedId ?? pickedTemplateId
+  // A picked template wins over the published one, so "Change template" works even when one is published.
+  const templateId = pickedTemplateId ?? publishedId
   const signTypeId = pickedSignTypeId !== undefined ? pickedSignTypeId : (order.data?.sign_type_id ?? null)
   // A cleared box means "use the default", which the server applies.
   const miscPct = miscInput === undefined || miscInput === '' ? null : Number(miscInput)
@@ -86,7 +83,6 @@ function CreateBom({ orderId }: { orderId: number }) {
   // The debounce trails a template switch, so this also guards against one render of the old template's lines.
   const current = debounced?.templateId === templateId ? preview.data : undefined
   const bom = current?.bom
-
   // Defaults come from the server. What the user typed wins; whatever they left alone stays out of the request.
   const values = { ...bom?.parameters, ...params }
 
@@ -95,11 +91,7 @@ function CreateBom({ orderId }: { orderId: number }) {
     [current, extras, overrides, template.data],
   )
 
-  const headList = useQuery({
-    queryKey: ['cost-heads'],
-    queryFn: ({ signal }) => api<CostHead[]>('/cost-heads', { signal }),
-    staleTime: 5 * 60_000,
-  })
+  const headList = useQuery({ queryKey: ['cost-heads'], queryFn: ({ signal }) => api<CostHead[]>('/cost-heads', { signal }), staleTime: 5 * 60_000 })
   // A material's tag can be an alias rather than a head's name, and the picker must be able to show it.
   const costHeads = useMemo(
     () => [...new Set([...(headList.data ?? []).map((h) => h.name), DEFAULT_EXTRA_HEAD, ...extras.flatMap((e) => (e.cost_tag ? [e.cost_tag] : []))])],
@@ -109,11 +101,7 @@ function CreateBom({ orderId }: { orderId: number }) {
   const save = useMutation({
     mutationFn: () =>
       api<Bom>('/boms', {
-        json: {
-          ...buildRequest(draft!),
-          box_dimension: boxDimension.trim() || null,
-          est_shipment_cost_usd: shipmentUsd === '' ? null : Number(shipmentUsd),
-        },
+        json: { ...buildRequest(draft!), box_dimension: boxDimension.trim() || null, est_shipment_cost_usd: shipmentUsd === '' ? null : Number(shipmentUsd) },
       }),
     onSuccess: (saved) => {
       // The order leaves the queue and its version list and dashboard counts have changed.
@@ -127,44 +115,36 @@ function CreateBom({ orderId }: { orderId: number }) {
     // Overrides are keyed by the old template's line ids, and its inputs don't apply to the new one.
     setParams({})
     setOverrides({})
+    if (id !== null) setChangingTemplate(false)
   }
-
   function clearOverride(id: number) {
     setOverrides((prev) => {
       const { [id]: _removed, ...rest } = prev
       return rest
     })
   }
-
   function addExtra(material: MaterialSearchResult) {
     const key = String(nextExtraKey.current++)
     setExtras((prev) => [...prev, { key, material_id: material.id, name: material.name, qty: 1, cost_tag: material.cost_tag ?? DEFAULT_EXTRA_HEAD, uom: material.uom }])
   }
-
   function updateExtra(key: string, change: Partial<DraftExtra>) {
     setExtras((prev) => prev.map((e) => (e.key === key ? { ...e, ...change } : e)))
   }
 
   if (order.isPending || signTypes.isPending) return <PageLoader />
   if (order.isError || signTypes.isError) return <PageError title="Couldn’t load this order" error={order.error ?? signTypes.error} />
+  const o = order.data
 
   const updating = draft !== debounced || preview.isFetching
-
   const lines = bom?.lines ?? []
-  const errorLines = lines.filter((l) => l.error).length
-  const inputErrors = Object.keys(bom?.input_errors ?? {})
   const missing = template.data ? missingRequired(template.data.parameters, values) : []
-  const blockers = [
-    ...(missing.length ? [`Fill in ${missing.map((p) => p.label).join(', ')}.`] : []),
-    ...(inputErrors.length ? [`Fix ${inputErrors.join(', ')}: ${Object.values(bom!.input_errors).join('; ')}.`] : []),
-    ...(errorLines ? [`${errorLines} line${errorLines === 1 ? ' has' : 's have'} a formula error. The template needs fixing before this can be saved.`] : []),
-  ]
+  const checklist = saveChecklist({ missing, inputErrors: bom?.input_errors ?? {}, lines })
   // Never save a figure nobody has seen: wait until the preview matches what's on screen.
-  const canSave = !!bom && !updating && !preview.isError && blockers.length === 0 && !save.isPending
-
-  const unpriced = lines.filter(isUnpriced).length
-  const stale = lines.filter((l) => l.rate_stale && l.rate_source !== 'none' && l.qty_final > 0).length
-  const mismatched = lines.filter(rateWarning).length
+  const canSave = !!bom && !updating && !preview.isError && !checklist.blocked && !save.isPending
+  const requiredCount = template.data?.parameters.filter((p) => p.required).length ?? 0
+  const st = orderStatus(o)
+  // With nothing published the choice of a draft must stay visible and changeable; otherwise it's behind "Change template".
+  const showPicker = templateId === null || changingTemplate || publishedId === null
 
   const renderQty = (row: LineRow) => {
     const { line, extraKey } = row
@@ -172,13 +152,7 @@ function CreateBom({ orderId }: { orderId: number }) {
       const extra = extras.find((e) => e.key === extraKey)
       return (
         <>
-          <QtyInput
-            value={extra?.qty ?? line.qty_final}
-            label={`Quantity of ${line.material_name}`}
-            onChange={(qty) => updateExtra(extraKey, { qty })}
-            onClear={() => updateExtra(extraKey, { qty: 0 })}
-          />
-          {/* no formula to reset to; this only keeps the column lined up with the rows that have the button */}
+          <QtyInput value={extra?.qty ?? line.qty_final} label={`Quantity of ${line.material_name}`} onChange={(qty) => updateExtra(extraKey, { qty })} onClear={() => updateExtra(extraKey, { qty: 0 })} />
           <span className="qty-reset" style={{ visibility: 'hidden' }} aria-hidden>
             ↺
           </span>
@@ -188,13 +162,7 @@ function CreateBom({ orderId }: { orderId: number }) {
     const id = line.component_line_id!
     return (
       <>
-        <QtyInput
-          value={line.qty_final}
-          label={`Quantity of ${line.material_name}`}
-          edited={row.overridden}
-          onChange={(qty) => setOverrides((prev) => ({ ...prev, [id]: qty }))}
-          onClear={() => clearOverride(id)}
-        />
+        <QtyInput value={line.qty_final} label={`Quantity of ${line.material_name}`} edited={row.overridden} onChange={(qty) => setOverrides((prev) => ({ ...prev, [id]: qty }))} onClear={() => clearOverride(id)} />
         <button
           type="button"
           className="qty-reset"
@@ -210,131 +178,108 @@ function CreateBom({ orderId }: { orderId: number }) {
   }
 
   return (
-    <div className="bom-page">
-      <aside className="bom-side">
-        <OrderFacts order={order.data} />
-        {order.data.bom_count > 0 && (
-          <Alert color="blue" p="xs">
-            <Text size="xs">
-              This order already has {order.data.bom_count} saved version{order.data.bom_count === 1 ? '' : 's'}.{' '}
-              <Anchor component={Link} to={`/orders/${orderId}`} size="xs">
-                See them
-              </Anchor>
-              . Saving here adds a new one.
-            </Text>
-          </Alert>
-        )}
-        {publishedId === null ? (
-          <TemplatePicker
-            order={order.data}
-            signTypes={signTypes.data}
-            signTypeId={signTypeId}
-            templateId={pickedTemplateId}
-            onSignTypeChange={(id) => {
-              setPickedSignTypeId(id)
-              chooseTemplate(null)
-            }}
-            onTemplateChange={chooseTemplate}
-          />
-        ) : (
-          template.data && (
-            <Text size="xs" c="dimmed">
-              Template: {template.data.sign_type_name} v{template.data.version} ({template.data.status})
-            </Text>
-          )
-        )}
-        {template.isError && (
-          <Alert color="red" p="xs">
-            <Text size="xs">{errorMessage(template.error)}</Text>
-          </Alert>
-        )}
-        {template.data && (
-          <ParameterForm
-            parameters={template.data.parameters}
-            values={values}
-            entered={params}
-            errors={bom?.input_errors ?? {}}
-            onChange={(name, value) => setParams((prev) => ({ ...prev, [name]: value }))}
-          />
-        )}
-      </aside>
+    <div data-testid="create-bom" style={{ display: 'contents' }}>
+      <PageHeader
+        crumbs={[{ label: 'Orders', to: '/' }, { label: o.code }]}
+        title={o.code}
+        pills={
+          <>
+            <StatusPill tone={st.tone}>
+              {st.word}
+              {o.dispatch_by && st.word !== 'BOM saved' ? ` · ${fmtDate(o.dispatch_by)}` : ''}
+            </StatusPill>
+            {o.status && <StatusPill tone="neutral">{o.status}</StatusPill>}
+          </>
+        }
+        description={[o.sign_type_name ?? o.sign_type_raw, [o.account_name, o.country].filter(Boolean).join(', '), o.width_in != null && o.height_in != null ? `${fmtSize(o.width_in, o.height_in)} in` : null, o.finish, o.led_color, o.usage].filter(Boolean).join(' · ')}
+        actions={
+          <>
+            {template.data && (
+              <span className="caption">
+                Template: <strong>{template.data.sign_type_name} v{template.data.version}</strong> ({template.data.status})
+              </span>
+            )}
+            {templateId !== null && (
+              <Button variant="default" onClick={() => setChangingTemplate((v) => !v)}>
+                {changingTemplate ? 'Keep template' : 'Change template'}
+              </Button>
+            )}
+          </>
+        }
+      />
 
-      <section className="bom-main">
-        <Paper withBorder className="bom-bar" style={{ minHeight: BAR_HEIGHT }}>
-          <Group gap="lg" wrap="nowrap">
-            <Text size="sm" fw={700} className="nowrap">
-              {bom ? `PKR ${fmtPkr(bom.grand_total_pkr)}` : '—'}
-            </Text>
-            {bom && (
-              <Text size="xs" c="dimmed" className="nowrap" visibleFrom="sm">
-                Material {fmtUsd(bom.material_cost_usd)} · Production {fmtUsd(bom.production_cost_usd)}
-              </Text>
-            )}
-            {updating && templateId !== null && <Loader size={14} aria-label="Updating" />}
-          </Group>
-          <Group gap={6} wrap="nowrap">
-            {unpriced > 0 && (
-              <Badge size="sm" color="red" variant="light" tt="none">
-                {unpriced} no rate
-              </Badge>
-            )}
-            {mismatched > 0 && (
-              <Badge size="sm" color="orange" variant="light" tt="none">
-                {mismatched} unit mismatch
-              </Badge>
-            )}
-            {stale > 0 && (
-              <Badge size="sm" color="orange" variant="light" tt="none">
-                {stale} stale
-              </Badge>
-            )}
-            <Button size="xs" disabled={!canSave} loading={save.isPending} onClick={() => save.mutate()}>
-              Save BOM
-            </Button>
-          </Group>
-        </Paper>
+      {o.bom_count > 0 && (
+        <Alert color="gray" p="sm">
+          <Text size="sm">
+            This order already has {o.bom_count} saved version{o.bom_count === 1 ? '' : 's'}.{' '}
+            <Anchor component={Link} to={`/orders/${orderId}`} size="sm">
+              See them
+            </Anchor>
+            . Saving here adds a new one.
+          </Text>
+        </Alert>
+      )}
 
-        {save.isError && (
-          <Alert color="red" title="Couldn’t save this BOM" mt={6} mb={6}>
-            <Text size="sm">{errorMessage(save.error)}</Text>
-          </Alert>
-        )}
-        {bom && blockers.length > 0 && (
-          <Alert color="red" p="xs" mt={6} mb={6} title={<Text size="xs" fw={600}>Can’t save yet</Text>}>
-            <List size="xs">
-              {blockers.map((reason) => (
-                <List.Item key={reason}>{reason}</List.Item>
-              ))}
-            </List>
-          </Alert>
-        )}
+      {showPicker && (
+        <TemplatePicker
+          order={o}
+          signTypes={signTypes.data}
+          signTypeId={signTypeId}
+          templateId={pickedTemplateId}
+          onSignTypeChange={(id) => {
+            setPickedSignTypeId(id)
+            chooseTemplate(null)
+          }}
+          onTemplateChange={chooseTemplate}
+        />
+      )}
+      {template.isError && (
+        <Alert color="red" p="xs">
+          <Text size="xs">{errorMessage(template.error)}</Text>
+        </Alert>
+      )}
 
-        {templateId === null ? (
-          <Paper withBorder p="xl">
-            <Center>
-              <Text c="dimmed" size="sm">
+      <div className="detail">
+        <div className="detail-main">
+          {template.data && (
+            <Section id="inputs" title="Inputs" meta={missing.length ? <span style={{ color: 'var(--pending)', fontWeight: 700 }}>{missing.length} of {requiredCount} still empty</span> : requiredCount ? 'All filled in' : undefined}>
+              <ParameterForm
+                parameters={template.data.parameters}
+                values={values}
+                entered={params}
+                errors={bom?.input_errors ?? {}}
+                missing={missing.map((p) => p.param_name)}
+                onChange={(name, value) => setParams((prev) => ({ ...prev, [name]: value }))}
+              />
+              {o.width_in != null && o.height_in != null && (
+                <p className="caption" style={{ margin: '12px 0 0' }}>
+                  Width {fmtNum(o.width_in, 3)} in, height {fmtNum(o.height_in, 3)} in and area {fmtNum((Number(o.width_in) * Number(o.height_in)) / 144, 2)} ft² come from the order and are available to formulas.
+                </p>
+              )}
+            </Section>
+          )}
+
+          {templateId === null ? (
+            <Section>
+              <Text c="var(--slate)" size="sm">
                 Choose a template to see the lines.
               </Text>
-            </Center>
-          </Paper>
-        ) : preview.isError ? (
-          <Alert color="red" title="Couldn’t calculate this BOM" mb="xs">
-            <Text size="sm" mb="xs">
-              {errorMessage(preview.error)}
-            </Text>
-            <Button size="xs" variant="default" onClick={() => preview.refetch()}>
-              Try again
-            </Button>
-          </Alert>
-        ) : !bom ? (
-          <Center p="xl">
-            <Loader />
-          </Center>
-        ) : (
-          <>
+            </Section>
+          ) : preview.isError ? (
+            <Alert color="red" title="Couldn’t calculate this BOM">
+              <Text size="sm" mb="xs">
+                {errorMessage(preview.error)}
+              </Text>
+              <Button size="xs" variant="default" onClick={() => preview.refetch()}>
+                Try again
+              </Button>
+            </Alert>
+          ) : !bom ? (
+            <PageLoader />
+          ) : (
             <BomLinesTable
               rows={rows}
-              stickyOffset={BAR_HEIGHT}
+              meta={updating ? 'updating…' : undefined}
               renderQty={renderQty}
               renderCostHead={(row) =>
                 row.extraKey ? (
@@ -353,52 +298,102 @@ function CreateBom({ orderId }: { orderId: number }) {
               }
               renderActions={(row) =>
                 row.extraKey && (
-                  <button
-                    type="button"
-                    className="line-remove"
-                    aria-label={`Remove ${row.line.material_name}`}
-                    title="Remove this line"
-                    onClick={() => setExtras((prev) => prev.filter((e) => e.key !== row.extraKey))}
-                  >
+                  <button type="button" className="line-remove" aria-label={`Remove ${row.line.material_name}`} title="Remove this line" onClick={() => setExtras((prev) => prev.filter((e) => e.key !== row.extraKey))}>
                     ×
                   </button>
                 )
               }
-              footer={
-                <Table.Tr>
-                  <Table.Td colSpan={10}>
-                    <AddMaterial onAdd={addExtra} />
-                  </Table.Td>
-                </Table.Tr>
-              }
+              footer={<AddMaterial onAdd={addExtra} />}
             />
-            <div className="bom-below">
-              <TotalsPanel
-                bom={bom}
-                miscInput={
-                  <NumberInput
-                    size="xs"
-                    w={64}
-                    aria-label="Misc percent"
-                    className="compact-number"
-                    hideControls
-                    allowNegative={false}
-                    value={miscInput ?? bom.misc_pct}
-                    placeholder={String(bom.misc_pct)}
-                    onChange={setMiscInput}
-                  />
-                }
-              />
-              <Paper withBorder p="xs">
-                <Stack gap={6}>
-                  <TextInput size="xs" label="Box dimension" value={boxDimension} onChange={(e) => setBoxDimension(e.currentTarget.value)} />
-                  <NumberInput size="xs" label="Est. shipment (USD)" hideControls allowNegative={false} value={shipmentUsd} onChange={setShipmentUsd} />
-                </Stack>
-              </Paper>
+          )}
+
+          <section className="card card-body order-context" aria-labelledby="order-notes-h">
+            <div style={{ minWidth: 0 }}>
+              <Title order={2} id="order-notes-h">
+                Order notes
+              </Title>
+              <p className="fact-notes" style={{ margin: '8px 0 0' }}>
+                {o.special_notes ?? <span className="caption">No notes on this order.</span>}
+              </p>
             </div>
-          </>
-        )}
-      </section>
+            <OrderAttachments order={o} />
+          </section>
+        </div>
+
+        <aside className="rail" data-testid="bom-bar" aria-label="Totals and checklist">
+          {bom ? (
+            <TotalsPanel bom={bom} miscInput={<NumberInput size="xs" w={64} aria-label="Misc percent" className="compact-number" hideControls allowNegative={false} value={miscInput ?? bom.misc_pct} placeholder={String(bom.misc_pct)} onChange={setMiscInput} />}>
+              <div className="rule-top" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <TextInput label="Box dimension" placeholder="e.g. 24 × 16 × 6 in" value={boxDimension} onChange={(e) => setBoxDimension(e.currentTarget.value)} />
+                <NumberInput label="Est. shipment (USD)" placeholder="0.00" hideControls allowNegative={false} value={shipmentUsd} onChange={setShipmentUsd} />
+              </div>
+            </TotalsPanel>
+          ) : (
+            <section className="card card-body totals" data-testid="totals">
+              <span className="caption body-strong">Grand total (PKR)</span>
+              <span className="hero-value">—</span>
+            </section>
+          )}
+          <section className="card card-body" data-testid="checklist" aria-labelledby="ready-h">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+              <Title order={2} id="ready-h" style={{ fontSize: 14, lineHeight: '20px' }}>
+                Before you save
+              </Title>
+              {bom && checklist.blocked && (
+                <span className="caption" style={{ color: 'var(--pending)', fontWeight: 700 }}>
+                  Can’t save yet
+                </span>
+              )}
+              {updating && templateId !== null && <Loader size={14} aria-label="Updating" />}
+            </div>
+            {bom ? (
+              <ul className="checklist" style={{ marginTop: 10 }}>
+                {checklist.items.map((item) => (
+                  <li key={item.text}>
+                    <RateTag tone={item.tag === 'OK' ? 'done' : 'pending'}>{item.tag}</RateTag>
+                    <span>
+                      {item.params?.length ? (
+                        <>
+                          Fill in{' '}
+                          {item.params.map((name, i) => {
+                            const label = template.data?.parameters.find((p) => p.param_name === name)?.label ?? name
+                            return (
+                              <span key={name}>
+                                {i > 0 && (i === item.params!.length - 1 ? ' and ' : ', ')}
+                                <a href={`#param-${name}`} onClick={(e) => { e.preventDefault(); document.getElementById(`param-${name}`)?.focus() }}>
+                                  {label}
+                                </a>
+                              </span>
+                            )
+                          })}
+                          {item.tag === 'To do' && item.text.startsWith('Fix') ? `: ${item.text.slice(4)}` : '.'}
+                        </>
+                      ) : (
+                        item.text
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="caption" style={{ margin: '8px 0 0' }}>
+                {templateId === null ? 'Choose a template first.' : 'Calculating…'}
+              </p>
+            )}
+            {save.isError && (
+              <Text size="xs" c="var(--missing)" mt="sm" role="alert">
+                {errorMessage(save.error)}
+              </Text>
+            )}
+            <Button fullWidth mt="md" disabled={!canSave} loading={save.isPending} onClick={() => save.mutate()}>
+              Save BOM
+            </Button>
+            <span className="caption" style={{ display: 'block', marginTop: 8 }}>
+              Saving writes BOM Price, production cost and BOM Done back to Airtable.
+            </span>
+          </section>
+        </aside>
+      </div>
     </div>
   )
 }
