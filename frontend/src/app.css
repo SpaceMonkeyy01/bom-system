@@ -1074,3 +1074,28 @@ a.hero:hover {
     top: 0 !important;
   }
 }
+
+/* ---------------------------------------------------------------- desktop table vs phone cards */
+.only-phone {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .only-desktop {
+    display: none;
+  }
+  .only-phone {
+    display: flex;
+  }
+  .segmented {
+    display: flex;
+    width: 100%;
+  }
+  .segmented button {
+    flex: 1;
+    height: 44px;
+  }
+  .heroes {
+    grid-template-columns: 1fr;
+  }
+}

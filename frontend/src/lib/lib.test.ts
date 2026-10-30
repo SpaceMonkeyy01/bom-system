@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fmtDate, fmtNum, fmtPkr, fmtSize, fmtUsd, isOverdue } from './format'
+import { agoWords, dispatchWords, fmtDate, fmtNum, fmtPkr, fmtSize, fmtUsd, isOverdue } from './format'
 import { displayableImages, isDisplayable, otherAttachments } from './images'
 
 describe('format', () => {
@@ -15,6 +15,24 @@ describe('format', () => {
     expect(isOverdue('2026-10-30', today)).toBe(false)
     expect(isOverdue('2026-11-01', today)).toBe(false)
     expect(isOverdue(null, today)).toBe(false)
+  })
+
+  it('says the dispatch date in words', () => {
+    const today = new Date(2026, 9, 30)
+    expect(dispatchWords('2026-10-28', today)).toBe('2 days ago')
+    expect(dispatchWords('2026-10-29', today)).toBe('yesterday')
+    expect(dispatchWords('2026-10-30', today)).toBe('today')
+    expect(dispatchWords('2026-10-31', today)).toBe('tomorrow')
+    expect(dispatchWords('2026-11-06', today)).toBe('in 7 days')
+    expect(dispatchWords(null, today)).toBe('')
+  })
+
+  it('says how long ago a sync was', () => {
+    const now = new Date('2026-10-30T12:00:00Z')
+    expect(agoWords('2026-10-30T11:56:00Z', now)).toBe('4 min ago')
+    expect(agoWords('2026-10-30T09:00:00Z', now)).toBe('3 h ago')
+    expect(agoWords('2026-10-27T12:00:00Z', now)).toBe('3 days ago')
+    expect(agoWords(null, now)).toBeNull()
   })
 
   it('formats numbers and shows a dash for nothing, but keeps zero', () => {
