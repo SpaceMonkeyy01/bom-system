@@ -58,7 +58,7 @@ export function LoginPage() {
               Sign in
             </Button>
             <Text size="xs" c="dimmed" ta="center">
-              MVP v1.0 by AH & SA
+              MVP v1.0 by Ali H. & Saad A.
             </Text>
           </Stack>
         </form>
